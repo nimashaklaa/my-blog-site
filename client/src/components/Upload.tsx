@@ -1,6 +1,13 @@
 import { IKContext, IKUpload } from "imagekitio-react";
-import { useRef } from "react";
+import { useRef, ReactNode } from "react";
 import { toast } from "react-toastify";
+
+interface UploadProps {
+  children: ReactNode;
+  type: string;
+  setProgress: (progress: number) => void;
+  setData: (data: any) => void;
+}
 
 const authenticator = async () => {
   try {
@@ -18,23 +25,25 @@ const authenticator = async () => {
     const data = await response.json();
     const { signature, expire, token } = data;
     return { signature, expire, token };
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Authentication request failed: ${error.message}`);
   }
 };
 
-const Upload = ({ children, type, setProgress, setData }) => {
-  const ref = useRef(null);
+const Upload = ({ children, type, setProgress, setData }: UploadProps) => {
+  const ref = useRef<HTMLInputElement>(null);
 
-  const onError = (err) => {
+  const onError = (err: any) => {
     console.log(err);
     toast.error("Image upload failed!");
   };
-  const onSuccess = (res) => {
+  
+  const onSuccess = (res: any) => {
     console.log(res);
     setData(res);
   };
-  const onUploadProgress = (progress) => {
+  
+  const onUploadProgress = (progress: any) => {
     console.log(progress);
     setProgress(Math.round((progress.loaded / progress.total) * 100));
   };
@@ -54,7 +63,7 @@ const Upload = ({ children, type, setProgress, setData }) => {
         ref={ref}
         accept={`${type}/*`}
       />
-      <div className="cursor-pointer" onClick={() => ref.current.click()}>
+      <div className="cursor-pointer" onClick={() => ref.current?.click()}>
         {children}
       </div>
     </IKContext>
@@ -62,3 +71,4 @@ const Upload = ({ children, type, setProgress, setData }) => {
 };
 
 export default Upload;
+

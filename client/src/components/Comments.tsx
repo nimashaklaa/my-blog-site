@@ -3,15 +3,21 @@ import Comment from "./Comment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { toast } from "react-toastify";
+import { Comment as CommentType } from "../types";
+import { FormEvent } from "react";
 
-const fetchComments = async (postId) => {
+interface CommentsProps {
+  postId: string;
+}
+
+const fetchComments = async (postId: string): Promise<CommentType[]> => {
   const res = await axios.get(
     `${import.meta.env.VITE_API_URL}/comments/${postId}`
   );
   return res.data;
 };
 
-const Comments = ({ postId }) => {
+const Comments = ({ postId }: CommentsProps) => {
   const { user } = useUser();
   const { getToken } = useAuth();
 
@@ -23,7 +29,7 @@ const Comments = ({ postId }) => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (newComment) => {
+    mutationFn: async (newComment: { desc: string }) => {
       const token = await getToken();
       return axios.post(
         `${import.meta.env.VITE_API_URL}/comments/${postId}`,
@@ -38,20 +44,21 @@ const Comments = ({ postId }) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
     },
-    onError: (error) => {
-      toast.error(error.response.data);
+    onError: (error: any) => {
+      toast.error(error.response?.data || "Failed to add comment");
     },
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const formData = new FormData(e.target as HTMLFormElement);
 
     const data = {
-      desc: formData.get("desc"),
+      desc: formData.get("desc") as string,
     };
 
     mutation.mutate(data);
+    (e.target as HTMLFormElement).reset();
   };
 
   return (
@@ -71,25 +78,29 @@ const Comments = ({ postId }) => {
         </button>
       </form>
       {isPending ? (
-        "Loading..."
+        <div>Loading...</div>
       ) : error ? (
-        "Error loading comments!"
+        <div>Error loading comments!</div>
       ) : (
         <>
-          {mutation.isPending && (
+          {mutation.isPending && mutation.variables && user && (
             <Comment
               comment={{
+                _id: "temp",
                 desc: `${mutation.variables.desc} (Sending...)`,
-                createdAt: new Date(),
+                createdAt: new Date().toISOString(),
                 user: {
+                  _id: user.id,
+                  username: user.username || "",
                   img: user.imageUrl,
-                  username: user.username,
                 },
+                post: postId,
               }}
+              postId={postId}
             />
           )}
 
-          {data.map((comment) => (
+          {data?.map((comment) => (
             <Comment key={comment._id} comment={comment} postId={postId} />
           ))}
         </>
@@ -99,3 +110,4 @@ const Comments = ({ postId }) => {
 };
 
 export default Comments;
+

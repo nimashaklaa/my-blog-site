@@ -4,11 +4,17 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { Comment as CommentType } from "../types";
 
-const Comment = ({ comment, postId }) => {
+interface CommentProps {
+  comment: CommentType;
+  postId: string;
+}
+
+const Comment = ({ comment, postId }: CommentProps) => {
   const { user } = useUser();
   const { getToken } = useAuth();
-  const role = user?.publicMetadata?.role;
+  const role = user?.publicMetadata?.role as string | undefined;
 
   const queryClient = useQueryClient();
 
@@ -28,8 +34,8 @@ const Comment = ({ comment, postId }) => {
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
       toast.success("Comment deleted successfully");
     },
-    onError: (error) => {
-      toast.error(error.response.data);
+    onError: (error: any) => {
+      toast.error(error.response?.data || "Failed to delete comment");
     },
   });
 
@@ -40,7 +46,7 @@ const Comment = ({ comment, postId }) => {
           <Image
             src={comment.user.img}
             className="w-10 h-10 rounded-full object-cover"
-            w="40"
+            w={40}
           />
         )}
         <span className="font-medium">{comment.user.username}</span>
@@ -66,3 +72,4 @@ const Comment = ({ comment, postId }) => {
 };
 
 export default Comment;
+

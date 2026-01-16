@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
 
 const Navbar = () => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(false);
 
   return (
     <div className="w-full h-16 md:h-20 flex items-center justify-between">
@@ -79,3 +79,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+

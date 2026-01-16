@@ -1,13 +1,14 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { KeyboardEvent, ChangeEvent } from "react";
 
 const Search = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      const query = e.target.value;
+      const query = (e.target as HTMLInputElement).value;
       if (location.pathname === "/posts") {
         setSearchParams({ ...Object.fromEntries(searchParams), search: query });
       } else {
@@ -40,3 +41,4 @@ const Search = () => {
 };
 
 export default Search;
+

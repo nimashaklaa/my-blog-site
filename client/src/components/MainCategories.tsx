@@ -51,3 +51,4 @@ const MainCategories = () => {
 };
 
 export default MainCategories;
+

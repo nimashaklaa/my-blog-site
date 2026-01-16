@@ -3,8 +3,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Post } from "../types";
+import { ReactNode } from "react";
 
-const PostMenuActions = ({ post }) => {
+interface PostMenuActionsProps {
+  post: Post;
+}
+
+const PostMenuActions = ({ post }: PostMenuActionsProps) => {
   const { user } = useUser();
   const { getToken } = useAuth();
   const navigate = useNavigate();
@@ -17,15 +23,16 @@ const PostMenuActions = ({ post }) => {
     queryKey: ["savedPosts"],
     queryFn: async () => {
       const token = await getToken();
-      return axios.get(`${import.meta.env.VITE_API_URL}/users/saved`, {
+      return axios.get<string[]>(`${import.meta.env.VITE_API_URL}/users/saved`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
     },
+    enabled: !!user,
   });
 
-  const isAdmin = user?.publicMetadata?.role === "admin" || false;
+  const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
   const isSaved = savedPosts?.data?.some((p) => p === post._id) || false;
 
   const deleteMutation = useMutation({
@@ -41,8 +48,8 @@ const PostMenuActions = ({ post }) => {
       toast.success("Post deleted successfully!");
       navigate("/");
     },
-    onError: (error) => {
-      toast.error(error.response.data);
+    onError: (error: any) => {
+      toast.error(error.response?.data || "Failed to delete post");
     },
   });
 
@@ -66,8 +73,8 @@ const PostMenuActions = ({ post }) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
     },
-    onError: (error) => {
-      toast.error(error.response.data);
+    onError: (error: any) => {
+      toast.error(error.response?.data || "Failed to save post");
     },
   });
 
@@ -89,8 +96,8 @@ const PostMenuActions = ({ post }) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["post", post.slug] });
     },
-    onError: (error) => {
-      toast.error(error.response.data);
+    onError: (error: any) => {
+      toast.error(error.response?.data || "Failed to feature post");
     },
   });
 
@@ -113,9 +120,9 @@ const PostMenuActions = ({ post }) => {
     <div className="">
       <h1 className="mt-8 mb-4 text-sm font-medium">Actions</h1>
       {isPending ? (
-        "Loading..."
+        <div>Loading...</div>
       ) : error ? (
-        "Saved post fetching failed!"
+        <div>Saved post fetching failed!</div>
       ) : (
         <div
           className="flex items-center gap-2 py-2 text-sm cursor-pointer"
@@ -205,3 +212,4 @@ const PostMenuActions = ({ post }) => {
 };
 
 export default PostMenuActions;
+

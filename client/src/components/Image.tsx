@@ -1,6 +1,14 @@
 import { IKImage } from "imagekitio-react";
 
-const Image = ({ src, className, w, h, alt }) => {
+interface ImageProps {
+  src: string;
+  className?: string;
+  w?: number;
+  h?: number;
+  alt?: string;
+}
+
+const Image = ({ src, className, w, h, alt }: ImageProps) => {
   return (
     <IKImage
       urlEndpoint={import.meta.env.VITE_IK_URL_ENDPOINT}
@@ -22,3 +30,4 @@ const Image = ({ src, className, w, h, alt }) => {
 };
 
 export default Image;
+

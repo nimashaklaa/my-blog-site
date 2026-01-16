@@ -3,8 +3,9 @@ import Image from "./Image";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "timeago.js";
+import { PostsResponse } from "../types";
 
-const fetchPost = async () => {
+const fetchPost = async (): Promise<PostsResponse> => {
   const res = await axios.get(
     `${import.meta.env.VITE_API_URL}/posts?featured=true&limit=4&sort=newest`
   );
@@ -17,12 +18,12 @@ const FeaturedPosts = () => {
     queryFn: () => fetchPost(),
   });
 
-  if (isPending) return "loading...";
-  if (error) return "Something went wrong!" + error.message;
+  if (isPending) return <div>loading...</div>;
+  if (error) return <div>Something went wrong! {error.message}</div>;
 
-  const posts = data.posts;
+  const posts = data?.posts;
   if (!posts || posts.length === 0) {
-    return;
+    return null;
   }
 
   return (
@@ -33,12 +34,12 @@ const FeaturedPosts = () => {
         {posts[0].img && <Image
           src={posts[0].img}
           className="rounded-3xl object-cover"
-          w="895"
+          w={895}
         />}
         {/* details */}
         <div className="flex items-center gap-4">
           <h1 className="font-semibold lg:text-lg">01.</h1>
-          <Link className="text-blue-800 lg:text-lg">{posts[0].category}</Link>
+          <Link to={`/posts?cat=${posts[0].category}`} className="text-blue-800 lg:text-lg">{posts[0].category}</Link>
           <span className="text-gray-500">{format(posts[0].createdAt)}</span>
         </div>
         {/* title */}
@@ -57,7 +58,7 @@ const FeaturedPosts = () => {
             <Image
               src={posts[1].img}
               className="rounded-3xl object-cover w-full h-full"
-              w="298"
+              w={298}
             />
           </div>}
           {/* details and title */}
@@ -65,7 +66,7 @@ const FeaturedPosts = () => {
             {/* details */}
             <div className="flex items-center gap-4 text-sm lg:text-base mb-4">
               <h1 className="font-semibold">02.</h1>
-              <Link className="text-blue-800">{posts[1].category}</Link>
+              <Link to={`/posts?cat=${posts[1].category}`} className="text-blue-800">{posts[1].category}</Link>
               <span className="text-gray-500 text-sm">{format(posts[1].createdAt)}</span>
             </div>
             {/* title */}
@@ -83,20 +84,20 @@ const FeaturedPosts = () => {
             <Image
               src={posts[2].img}
               className="rounded-3xl object-cover w-full h-full"
-              w="298"
+              w={298}
             />
           </div>}
           {/* details and title */}
           <div className="w-2/3">
             {/* details */}
             <div className="flex items-center gap-4 text-sm lg:text-base mb-4">
-              <h1 className="font-semibold">02.</h1>
-              <Link className="text-blue-800">{posts[2].category}</Link>
+              <h1 className="font-semibold">03.</h1>
+              <Link to={`/posts?cat=${posts[2].category}`} className="text-blue-800">{posts[2].category}</Link>
               <span className="text-gray-500 text-sm">{format(posts[2].createdAt)}</span>
             </div>
             {/* title */}
             <Link
-              to={posts[1].slug}
+              to={posts[2].slug}
               className="text-base sm:text-lg md:text-2xl lg:text-xl xl:text-2xl font-medium"
             >
               {posts[2].title}
@@ -109,15 +110,15 @@ const FeaturedPosts = () => {
             <Image
               src={posts[3].img}
               className="rounded-3xl object-cover w-full h-full"
-              w="298"
+              w={298}
             />
           </div>}
           {/* details and title */}
           <div className="w-2/3">
             {/* details */}
             <div className="flex items-center gap-4 text-sm lg:text-base mb-4">
-              <h1 className="font-semibold">02.</h1>
-              <Link className="text-blue-800">{posts[3].category}</Link>
+              <h1 className="font-semibold">04.</h1>
+              <Link to={`/posts?cat=${posts[3].category}`} className="text-blue-800">{posts[3].category}</Link>
               <span className="text-gray-500 text-sm">{format(posts[3].createdAt)}</span>
             </div>
             {/* title */}
@@ -135,3 +136,4 @@ const FeaturedPosts = () => {
 };
 
 export default FeaturedPosts;
+

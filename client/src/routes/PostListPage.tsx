@@ -3,7 +3,7 @@ import PostList from "../components/PostList";
 import SideMenu from "../components/SideMenu";
 
 const PostListPage = () => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(false);
 
   return (
     <div className="">
@@ -27,3 +27,4 @@ const PostListPage = () => {
 };
 
 export default PostListPage;
+
