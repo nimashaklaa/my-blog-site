@@ -1,7 +1,20 @@
-import { Schema } from "mongoose";
-import mongoose from "mongoose";
+import { Schema, model, Document, Types } from "mongoose";
 
-const postSchema = new Schema(
+export interface IPost extends Document {
+  user: Types.ObjectId;
+  img?: string;
+  title: string;
+  slug: string;
+  desc?: string;
+  category: string;
+  content: string;
+  isFeatured: boolean;
+  visit: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+const postSchema = new Schema<IPost>(
   {
     user: {
       type: Schema.Types.ObjectId,
@@ -43,4 +56,5 @@ const postSchema = new Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Post", postSchema);
+export default model<IPost>("Post", postSchema);
+

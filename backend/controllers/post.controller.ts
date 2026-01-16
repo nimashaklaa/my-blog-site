@@ -1,12 +1,23 @@
+import { Request, Response } from "express";
 import ImageKit from "imagekit";
-import Post from "../models/post.model.js";
-import User from "../models/user.model.js";
+import Post from "../models/post.model";
+import User from "../models/user.model";
 
-export const getPosts = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 2;
+interface PostQuery {
+  page?: string;
+  limit?: string;
+  cat?: string;
+  author?: string;
+  search?: string;
+  sort?: string;
+  featured?: string;
+}
 
-  const query = {};
+export const getPosts = async (req: Request<{}, {}, {}, PostQuery>, res: Response): Promise<void> => {
+  const page = parseInt(req.query.page || "1");
+  const limit = parseInt(req.query.limit || "2");
+
+  const query: any = {};
 
   console.log(req.query);
 
@@ -28,13 +39,14 @@ export const getPosts = async (req, res) => {
     const user = await User.findOne({ username: author }).select("_id");
 
     if (!user) {
-      return res.status(404).json("No post found!");
+      res.status(404).json("No post found!");
+      return;
     }
 
     query.user = user._id;
   }
 
-  let sortObj = { createdAt: -1 };
+  let sortObj: any = { createdAt: -1 };
 
   if (sortQuery) {
     switch (sortQuery) {
@@ -74,7 +86,7 @@ export const getPosts = async (req, res) => {
   res.status(200).json({ posts, hasMore });
 };
 
-export const getPost = async (req, res) => {
+export const getPost = async (req: Request, res: Response): Promise<void> => {
   const post = await Post.findOne({ slug: req.params.slug }).populate(
     "user",
     "username img"
@@ -82,19 +94,21 @@ export const getPost = async (req, res) => {
   res.status(200).json(post);
 };
 
-export const createPost = async (req, res) => {
-  const clerkUserId = req.auth.userId;
+export const createPost = async (req: Request, res: Response): Promise<void> => {
+  const clerkUserId = req.auth?.userId;
 
   console.log(req.headers);
 
   if (!clerkUserId) {
-    return res.status(401).json("Not authenticated!");
+    res.status(401).json("Not authenticated!");
+    return;
   }
 
   const user = await User.findOne({ clerkUserId });
 
   if (!user) {
-    return res.status(404).json("User not found!");
+    res.status(404).json("User not found!");
+    return;
   }
 
   let slug = req.body.title.replace(/ /g, "-").toLowerCase();
@@ -115,21 +129,28 @@ export const createPost = async (req, res) => {
   res.status(200).json(post);
 };
 
-export const deletePost = async (req, res) => {
-  const clerkUserId = req.auth.userId;
+export const deletePost = async (req: Request, res: Response): Promise<void> => {
+  const clerkUserId = req.auth?.userId;
 
   if (!clerkUserId) {
-    return res.status(401).json("Not authenticated!");
+    res.status(401).json("Not authenticated!");
+    return;
   }
 
-  const role = req.auth.sessionClaims?.metadata?.role || "user";
+  const role = req.auth?.sessionClaims?.metadata?.role || "user";
 
   if (role === "admin") {
     await Post.findByIdAndDelete(req.params.id);
-    return res.status(200).json("Post has been deleted");
+    res.status(200).json("Post has been deleted");
+    return;
   }
 
   const user = await User.findOne({ clerkUserId });
+
+  if (!user) {
+    res.status(404).json("User not found!");
+    return;
+  }
 
   const deletedPost = await Post.findOneAndDelete({
     _id: req.params.id,
@@ -137,30 +158,34 @@ export const deletePost = async (req, res) => {
   });
 
   if (!deletedPost) {
-    return res.status(403).json("You can delete only your posts!");
+    res.status(403).json("You can delete only your posts!");
+    return;
   }
 
   res.status(200).json("Post has been deleted");
 };
 
-export const featurePost = async (req, res) => {
-  const clerkUserId = req.auth.userId;
+export const featurePost = async (req: Request, res: Response): Promise<void> => {
+  const clerkUserId = req.auth?.userId;
   const postId = req.body.postId;
 
   if (!clerkUserId) {
-    return res.status(401).json("Not authenticated!");
+    res.status(401).json("Not authenticated!");
+    return;
   }
 
-  const role = req.auth.sessionClaims?.metadata?.role || "user";
+  const role = req.auth?.sessionClaims?.metadata?.role || "user";
 
   if (role !== "admin") {
-    return res.status(403).json("You cannot feature posts!");
+    res.status(403).json("You cannot feature posts!");
+    return;
   }
 
   const post = await Post.findById(postId);
 
   if (!post) {
-    return res.status(404).json("Post not found!");
+    res.status(404).json("Post not found!");
+    return;
   }
 
   const isFeatured = post.isFeatured;
@@ -177,12 +202,13 @@ export const featurePost = async (req, res) => {
 };
 
 const imagekit = new ImageKit({
-  urlEndpoint: process.env.IK_URL_ENDPOINT,
-  publicKey: process.env.IK_PUBLIC_KEY,
-  privateKey: process.env.IK_PRIVATE_KEY,
+  urlEndpoint: process.env.IK_URL_ENDPOINT!,
+  publicKey: process.env.IK_PUBLIC_KEY!,
+  privateKey: process.env.IK_PRIVATE_KEY!,
 });
 
-export const uploadAuth = async (req, res) => {
+export const uploadAuth = async (_req: Request, res: Response): Promise<void> => {
   const result = imagekit.getAuthenticationParameters();
   res.send(result);
 };
+

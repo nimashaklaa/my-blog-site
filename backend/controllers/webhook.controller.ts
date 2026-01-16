@@ -1,9 +1,20 @@
-import User from "../models/user.model.js";
-import Post from "../models/post.model.js";
-import Comment from "../models/comment.model.js";
+import { Request, Response } from "express";
+import User from "../models/user.model";
+import Post from "../models/post.model";
+import Comment from "../models/comment.model";
 import { Webhook } from "svix";
 
-export const clerkWebHook = async (req, res) => {
+interface ClerkEvent {
+  type: string;
+  data: {
+    id: string;
+    username?: string;
+    email_addresses: Array<{ email_address: string }>;
+    profile_img_url?: string;
+  };
+}
+
+export const clerkWebHook = async (req: Request, res: Response): Promise<void> => {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
@@ -14,13 +25,15 @@ export const clerkWebHook = async (req, res) => {
   const headers = req.headers;
 
   const wh = new Webhook(WEBHOOK_SECRET);
-  let evt;
+  let evt: ClerkEvent | undefined;
+  
   try {
-    evt = wh.verify(payload, headers);
+    evt = wh.verify(payload, headers as Record<string, string>) as ClerkEvent;
   } catch (err) {
     res.status(400).json({
       message: "Webhook verification failed!",
     });
+    return;
   }
 
   // console.log(evt.data);
@@ -41,11 +54,14 @@ export const clerkWebHook = async (req, res) => {
       clerkUserId: evt.data.id,
     });
 
-    await Post.deleteMany({user:deletedUser._id})
-    await Comment.deleteMany({user:deletedUser._id})
+    if (deletedUser) {
+      await Post.deleteMany({ user: deletedUser._id });
+      await Comment.deleteMany({ user: deletedUser._id });
+    }
   }
 
-  return res.status(200).json({
+  res.status(200).json({
     message: "Webhook received",
   });
 };
+

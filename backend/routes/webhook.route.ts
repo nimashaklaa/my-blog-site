@@ -1,5 +1,5 @@
 import express from "express";
-import { clerkWebHook } from "../controllers/webhook.controller.js";
+import { clerkWebHook } from "../controllers/webhook.controller";
 import bodyParser from "body-parser";
 
 const router = express.Router();
@@ -11,3 +11,4 @@ router.post(
 );
 
 export default router;
+

@@ -6,8 +6,8 @@ import {
   deletePost,
   uploadAuth,
   featurePost,
-} from "../controllers/post.controller.js";
-import increaseVisit from "../middlewares/increaseVisit.js";
+} from "../controllers/post.controller";
+import increaseVisit from "../middlewares/increaseVisit";
 
 const router = express.Router();
 
@@ -20,3 +20,4 @@ router.delete("/:id", deletePost);
 router.patch("/feature", featurePost);
 
 export default router;
+
