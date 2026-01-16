@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import ImageKit from "imagekit";
-import Post from "../models/post.model";
-import User from "../models/user.model";
+import Post from "../models/post.model.js";
+import User from "../models/user.model.js";
 
 interface PostQuery {
   page?: string;
@@ -95,38 +95,104 @@ export const getPost = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const createPost = async (req: Request, res: Response): Promise<void> => {
-  const clerkUserId = req.auth?.userId;
+  try {
+    console.log("createPost called");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+    console.log("Auth object:", req.auth);
+    
+    const clerkUserId = req.auth?.userId;
 
-  console.log(req.headers);
+    if (!clerkUserId) {
+      console.log("No clerkUserId found");
+      res.status(401).json("Not authenticated!");
+      return;
+    }
+    
+    console.log("clerkUserId:", clerkUserId);
 
-  if (!clerkUserId) {
-    res.status(401).json("Not authenticated!");
-    return;
+    const user = await User.findOne({ clerkUserId });
+
+    if (!user) {
+      res.status(404).json("User not found!");
+      return;
+    }
+
+    // Validate required fields
+    if (!req.body.title || typeof req.body.title !== "string" || req.body.title.trim() === "") {
+      res.status(400).json({ error: "Title is required and must be a non-empty string" });
+      return;
+    }
+
+    if (!req.body.content || typeof req.body.content !== "string" || req.body.content.trim() === "") {
+      res.status(400).json({ error: "Content is required and must be a non-empty string" });
+      return;
+    }
+
+    // Generate slug from title
+    let slug = req.body.title.trim().replace(/ /g, "-").toLowerCase();
+    // Remove special characters except hyphens
+    slug = slug.replace(/[^a-z0-9-]/g, "");
+    // Remove multiple consecutive hyphens
+    slug = slug.replace(/-+/g, "-");
+    // Remove leading/trailing hyphens
+    slug = slug.replace(/^-+|-+$/g, "");
+
+    // Ensure slug is not empty
+    if (!slug) {
+      slug = "post";
+    }
+
+    // Check for existing posts with the same slug
+    let existingPost = await Post.findOne({ slug });
+    let counter = 2;
+
+    while (existingPost) {
+      slug = `${slug}-${counter}`;
+      existingPost = await Post.findOne({ slug });
+      counter++;
+    }
+
+    const newPost = new Post({
+      user: user._id,
+      slug,
+      title: req.body.title.trim(),
+      category: req.body.category || "general",
+      desc: req.body.desc?.trim() || "",
+      content: req.body.content.trim(),
+      img: req.body.img || "",
+    });
+
+    const post = await newPost.save();
+    res.status(200).json(post);
+  } catch (error: any) {
+    console.error("Error creating post:", error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err: any) => err.message);
+      res.status(400).json({ error: "Validation error", details: errors });
+      return;
+    }
+
+    // Handle duplicate key errors (e.g., duplicate slug)
+    if (error.code === 11000) {
+      res.status(400).json({ error: "A post with this slug already exists" });
+      return;
+    }
+
+    // Generic error
+    console.error("Full error details:", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+    });
+    res.status(500).json({ 
+      error: error.message || "Failed to create post",
+      message: error.message || "Failed to create post",
+      details: process.env.NODE_ENV === "development" ? error.stack : undefined
+    });
   }
-
-  const user = await User.findOne({ clerkUserId });
-
-  if (!user) {
-    res.status(404).json("User not found!");
-    return;
-  }
-
-  let slug = req.body.title.replace(/ /g, "-").toLowerCase();
-
-  let existingPost = await Post.findOne({ slug });
-
-  let counter = 2;
-
-  while (existingPost) {
-    slug = `${slug}-${counter}`;
-    existingPost = await Post.findOne({ slug });
-    counter++;
-  }
-
-  const newPost = new Post({ user: user._id, slug, ...req.body });
-
-  const post = await newPost.save();
-  res.status(200).json(post);
 };
 
 export const deletePost = async (req: Request, res: Response): Promise<void> => {
@@ -201,14 +267,36 @@ export const featurePost = async (req: Request, res: Response): Promise<void> =>
   res.status(200).json(updatedPost);
 };
 
-const imagekit = new ImageKit({
-  urlEndpoint: process.env.IK_URL_ENDPOINT!,
-  publicKey: process.env.IK_PUBLIC_KEY!,
-  privateKey: process.env.IK_PRIVATE_KEY!,
-});
+// Lazy-load ImageKit only when needed
+const getImageKit = (): ImageKit => {
+  const urlEndpoint = process.env.IK_URL_ENDPOINT;
+  const publicKey = process.env.IK_PUBLIC_KEY;
+  const privateKey = process.env.IK_PRIVATE_KEY;
+
+  if (!urlEndpoint || !publicKey || !privateKey) {
+    throw new Error(
+      "ImageKit is not configured. Please set IK_URL_ENDPOINT, IK_PUBLIC_KEY, and IK_PRIVATE_KEY environment variables."
+    );
+  }
+
+  return new ImageKit({
+    urlEndpoint,
+    publicKey,
+    privateKey,
+  });
+};
 
 export const uploadAuth = async (_req: Request, res: Response): Promise<void> => {
-  const result = imagekit.getAuthenticationParameters();
-  res.send(result);
+  try {
+    const imagekit = getImageKit();
+    const result = imagekit.getAuthenticationParameters();
+    res.json(result);
+  } catch (error: any) {
+    console.error("ImageKit upload auth error:", error);
+    res.status(500).json({ 
+      error: error.message || "ImageKit configuration error",
+      message: error.message || "ImageKit configuration error"
+    });
+  }
 };
 

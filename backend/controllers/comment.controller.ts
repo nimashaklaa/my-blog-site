@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import Comment from "../models/comment.model";
-import User from "../models/user.model";
+import Comment from "../models/comment.model.js";
+import User from "../models/user.model.js";
 
 export const getPostComments = async (req: Request, res: Response): Promise<void> => {
   const comments = await Comment.find({ post: req.params.postId })

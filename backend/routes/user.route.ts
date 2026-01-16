@@ -1,5 +1,5 @@
 import express from "express";
-import { getUserSavedPosts, savePost } from "../controllers/user.controller";
+import { getUserSavedPosts, savePost } from "../controllers/user.controller.js";
 
 const router = express.Router();
 

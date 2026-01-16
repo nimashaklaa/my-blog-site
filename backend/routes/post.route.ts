@@ -1,23 +1,31 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import {
   getPosts,
   getPost,
   createPost,
   deletePost,
-  uploadAuth,
   featurePost,
-} from "../controllers/post.controller";
-import increaseVisit from "../middlewares/increaseVisit";
+} from "../controllers/post.controller.js";
+import increaseVisit from "../middlewares/increaseVisit.js";
 
 const router = express.Router();
 
-router.get("/upload-auth", uploadAuth);
+// Async error wrapper to ensure errors are caught
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch((error) => {
+      console.error("Async handler caught error:", error);
+      next(error);
+    });
+  };
+};
 
-router.get("/", getPosts);
-router.get("/:slug", increaseVisit, getPost);
-router.post("/", createPost);
-router.delete("/:id", deletePost);
-router.patch("/feature", featurePost);
+// upload-auth is handled directly in index.ts as a public route
+router.get("/", asyncHandler(getPosts));
+router.get("/:slug", increaseVisit, asyncHandler(getPost));
+router.post("/", asyncHandler(createPost));
+router.delete("/:id", asyncHandler(deletePost));
+router.patch("/feature", asyncHandler(featurePost));
 
 export default router;
 

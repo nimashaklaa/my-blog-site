@@ -36,11 +36,20 @@ const PostList = () => {
   if (isFetching) return <div>Loading...</div>;
   if (error) return <div>Something went wrong!</div>;
 
-  const allPosts = data?.pages?.flatMap((page) => page.posts) || [];
+  const allPosts = data?.pages?.flatMap((page) => page.posts || []) || [];
+  
+  // Filter out any undefined/null posts
+  const validPosts = allPosts.filter((post): post is NonNullable<typeof post> => 
+    post != null && post._id != null
+  );
+
+  if (validPosts.length === 0 && !isFetching) {
+    return <div className="text-center py-8">No posts found.</div>;
+  }
 
   return (
     <InfiniteScroll
-      dataLength={allPosts.length}
+      dataLength={validPosts.length}
       next={fetchNextPage}
       hasMore={!!hasNextPage}
       loader={<h4>Loading more posts...</h4>}
@@ -50,7 +59,7 @@ const PostList = () => {
         </p>
       }
     >
-      {allPosts.map((post) => (
+      {validPosts.map((post) => (
         <PostListItem key={post._id} post={post} />
       ))}
     </InfiniteScroll>

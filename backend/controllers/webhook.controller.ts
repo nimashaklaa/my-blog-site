@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import User from "../models/user.model";
-import Post from "../models/post.model";
-import Comment from "../models/comment.model";
+import User from "../models/user.model.js";
+import Post from "../models/post.model.js";
+import Comment from "../models/comment.model.js";
 import { Webhook } from "svix";
 
 interface ClerkEvent {
@@ -10,7 +10,8 @@ interface ClerkEvent {
     id: string;
     username?: string;
     email_addresses: Array<{ email_address: string }>;
-    profile_img_url?: string;
+    profile_image_url?: string;
+    image_url?: string;
   };
 }
 
@@ -39,14 +40,16 @@ export const clerkWebHook = async (req: Request, res: Response): Promise<void> =
   // console.log(evt.data);
 
   if (evt.type === "user.created") {
+    console.log("Webhook received: user.created for", evt.data.id);
     const newUser = new User({
       clerkUserId: evt.data.id,
       username: evt.data.username || evt.data.email_addresses[0].email_address,
       email: evt.data.email_addresses[0].email_address,
-      img: evt.data.profile_img_url,
+      img: evt.data.image_url || evt.data.profile_image_url,
     });
 
     await newUser.save();
+    console.log("User saved to database:", newUser.email);
   }
 
   if (evt.type === "user.deleted") {

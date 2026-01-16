@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import User from "../models/user.model";
+import User from "../models/user.model.js";
 
 export const getUserSavedPosts = async (req: Request, res: Response): Promise<void> => {
   const clerkUserId = req.auth?.userId;

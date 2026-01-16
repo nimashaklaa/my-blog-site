@@ -22,10 +22,11 @@ if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
 }
 
-const router = createBrowserRouter([
-  {
-    element: <MainLayout />,
-    children: [
+const router = createBrowserRouter(
+  [
+    {
+      element: <MainLayout />,
+      children: [
       {
         path: "/",
         element: <Homepage />,
@@ -52,7 +53,13 @@ const router = createBrowserRouter([
       },
     ],
   },
-]);
+  ],
+  {
+    future: {
+      v7_startTransition: true,
+    },
+  }
+);
 
 const rootElement = document.getElementById("root");
 
