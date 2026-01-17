@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import Comment from "./Comment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/clerk-react";
@@ -44,8 +44,16 @@ const Comments = ({ postId }: CommentsProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data || "Failed to add comment");
+    onError: (error: unknown) => {
+      const axiosError = error as AxiosError<{
+        error?: string;
+        message?: string;
+      }>;
+      toast.error(
+        axiosError.response?.data?.error ||
+          axiosError.response?.data?.message ||
+          "Failed to add comment"
+      );
     },
   });
 

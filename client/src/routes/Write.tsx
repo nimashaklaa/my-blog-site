@@ -2,7 +2,7 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import "react-quill-new/dist/quill.snow.css";
 import ReactQuill from "react-quill-new";
 import { useMutation } from "@tanstack/react-query";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useEffect, useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -67,27 +67,32 @@ const Write = () => {
       toast.success("Post has been created");
       navigate(`/${res.data.slug}`);
     },
-    onError: (error: any) => {
-      console.error("Error creating post:", error);
-      console.error("Error response:", error.response?.data);
+    onError: (error: unknown) => {
+      const axiosError = error as AxiosError<
+        | string
+        | { error?: string; message?: string; details?: string | string[] }
+      >;
+      console.error("Error creating post:", axiosError);
+      console.error("Error response:", axiosError.response?.data);
 
       let errorMessage = "Failed to create post. Please try again.";
 
-      if (error.response?.data) {
+      if (axiosError.response?.data) {
+        const responseData = axiosError.response.data;
         // Try to get the error message from the response
-        if (typeof error.response.data === "string") {
-          errorMessage = error.response.data;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.details) {
-          errorMessage = Array.isArray(error.response.data.details)
-            ? error.response.data.details.join(", ")
-            : error.response.data.details;
+        if (typeof responseData === "string") {
+          errorMessage = responseData;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.details) {
+          errorMessage = Array.isArray(responseData.details)
+            ? responseData.details.join(", ")
+            : responseData.details;
         }
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (axiosError.message) {
+        errorMessage = axiosError.message;
       }
 
       toast.error(errorMessage);

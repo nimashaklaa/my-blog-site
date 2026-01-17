@@ -3,7 +3,7 @@ import Image from "./Image";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { Comment as CommentType } from "../types";
 
 interface CommentProps {
@@ -34,8 +34,16 @@ const Comment = ({ comment, postId }: CommentProps) => {
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
       toast.success("Comment deleted successfully");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data || "Failed to delete comment");
+    onError: (error: unknown) => {
+      const axiosError = error as AxiosError<{
+        error?: string;
+        message?: string;
+      }>;
+      toast.error(
+        axiosError.response?.data?.error ||
+          axiosError.response?.data?.message ||
+          "Failed to delete comment"
+      );
     },
   });
 

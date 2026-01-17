@@ -1,6 +1,6 @@
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Post } from "../types";
@@ -50,8 +50,16 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
       toast.success("Post deleted successfully!");
       navigate("/");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data || "Failed to delete post");
+    onError: (error: unknown) => {
+      const axiosError = error as AxiosError<{
+        error?: string;
+        message?: string;
+      }>;
+      toast.error(
+        axiosError.response?.data?.error ||
+          axiosError.response?.data?.message ||
+          "Failed to delete post"
+      );
     },
   });
 
@@ -75,8 +83,16 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data || "Failed to save post");
+    onError: (error: unknown) => {
+      const axiosError = error as AxiosError<{
+        error?: string;
+        message?: string;
+      }>;
+      toast.error(
+        axiosError.response?.data?.error ||
+          axiosError.response?.data?.message ||
+          "Failed to save post"
+      );
     },
   });
 
@@ -98,8 +114,16 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["post", post.slug] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data || "Failed to feature post");
+    onError: (error: unknown) => {
+      const axiosError = error as AxiosError<{
+        error?: string;
+        message?: string;
+      }>;
+      toast.error(
+        axiosError.response?.data?.error ||
+          axiosError.response?.data?.message ||
+          "Failed to feature post"
+      );
     },
   });
 

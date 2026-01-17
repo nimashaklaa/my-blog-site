@@ -4,7 +4,7 @@ import Image from "../components/Image";
 import PostMenuActions from "../components/PostMenuActions";
 import Search from "../components/Search";
 import Comments from "../components/Comments";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "timeago.js";
 import { Post } from "../types";
@@ -50,8 +50,16 @@ const SinglePostPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["post", slug] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data || "Failed to clap");
+    onError: (error: unknown) => {
+      const axiosError = error as AxiosError<{
+        error?: string;
+        message?: string;
+      }>;
+      toast.error(
+        axiosError.response?.data?.error ||
+          axiosError.response?.data?.message ||
+          "Failed to clap"
+      );
     },
   });
 
