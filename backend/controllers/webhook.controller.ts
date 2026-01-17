@@ -15,7 +15,10 @@ interface ClerkEvent {
   };
 }
 
-export const clerkWebHook = async (req: Request, res: Response): Promise<void> => {
+export const clerkWebHook = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
@@ -27,7 +30,7 @@ export const clerkWebHook = async (req: Request, res: Response): Promise<void> =
 
   const wh = new Webhook(WEBHOOK_SECRET);
   let evt: ClerkEvent | undefined;
-  
+
   try {
     evt = wh.verify(payload, headers as Record<string, string>) as ClerkEvent;
   } catch (err) {
@@ -67,4 +70,3 @@ export const clerkWebHook = async (req: Request, res: Response): Promise<void> =
     message: "Webhook received",
   });
 };
-

@@ -9,16 +9,16 @@ body {
   font-family: "Montserrat", sans-serif;
 }
 
-.animatedButton{
+.animatedButton {
   animation-duration: 10000ms;
 }
 
-.ql-container{
+.ql-container {
   border: none !important;
 }
-.ql-toolbar{
+.ql-toolbar {
   border: none !important;
 }
-.ql-editor{
+.ql-editor {
   border: none !important;
 }

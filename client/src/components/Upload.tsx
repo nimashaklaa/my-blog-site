@@ -12,9 +12,11 @@ interface UploadProps {
 const authenticator = async () => {
   try {
     const apiUrl = import.meta.env.VITE_API_URL;
-    
+
     if (!apiUrl) {
-      throw new Error("VITE_API_URL is not configured. Please check your .env file.");
+      throw new Error(
+        "VITE_API_URL is not configured. Please check your .env file."
+      );
     }
 
     const response = await fetch(`${apiUrl}/posts/upload-auth`);
@@ -23,9 +25,9 @@ const authenticator = async () => {
       // Clone the response so we can read it multiple times if needed
       const clonedResponse = response.clone();
       const contentType = response.headers.get("content-type");
-      
+
       let errorMessage = `Request failed with status ${response.status}`;
-      
+
       // Try to extract error message from response
       try {
         if (contentType && contentType.includes("application/json")) {
@@ -42,7 +44,7 @@ const authenticator = async () => {
         // If parsing fails, use the status code
         console.error("Failed to parse error response:", parseError);
       }
-      
+
       throw new Error(errorMessage);
     }
 
@@ -64,12 +66,12 @@ const Upload = ({ children, type, setProgress, setData }: UploadProps) => {
     console.log(err);
     toast.error("Image upload failed!");
   };
-  
+
   const onSuccess = (res: any) => {
     console.log(res);
     setData(res);
   };
-  
+
   const onUploadProgress = (progress: any) => {
     console.log(progress);
     setProgress(Math.round((progress.loaded / progress.total) * 100));
@@ -79,7 +81,8 @@ const Upload = ({ children, type, setProgress, setData }: UploadProps) => {
   if (!publicKey || !urlEndpoint) {
     return (
       <div className="text-red-500 text-sm">
-        ImageKit not configured. Please add VITE_IK_PUBLIC_KEY and VITE_IK_URL_ENDPOINT to your .env file.
+        ImageKit not configured. Please add VITE_IK_PUBLIC_KEY and
+        VITE_IK_URL_ENDPOINT to your .env file.
       </div>
     );
   }
@@ -107,4 +110,3 @@ const Upload = ({ children, type, setProgress, setData }: UploadProps) => {
 };
 
 export default Upload;
-

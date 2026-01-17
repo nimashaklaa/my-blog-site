@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import User from "../models/user.model.js";
 
-export const getUserSavedPosts = async (req: Request, res: Response): Promise<void> => {
+export const getUserSavedPosts = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const clerkUserId = req.auth?.userId;
 
   if (!clerkUserId) {
@@ -49,4 +52,3 @@ export const savePost = async (req: Request, res: Response): Promise<void> => {
 
   res.status(200).json(isSaved ? "Post unsaved" : "Post saved");
 };
-

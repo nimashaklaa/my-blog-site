@@ -2,7 +2,10 @@ import { Request, Response } from "express";
 import Comment from "../models/comment.model.js";
 import User from "../models/user.model.js";
 
-export const getPostComments = async (req: Request, res: Response): Promise<void> => {
+export const getPostComments = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const comments = await Comment.find({ post: req.params.postId })
     .populate("user", "username img")
     .sort({ createdAt: -1 });
@@ -10,7 +13,10 @@ export const getPostComments = async (req: Request, res: Response): Promise<void
   res.json(comments);
 };
 
-export const addComment = async (req: Request, res: Response): Promise<void> => {
+export const addComment = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const clerkUserId = req.auth?.userId;
   const postId = req.params.postId;
 
@@ -37,7 +43,10 @@ export const addComment = async (req: Request, res: Response): Promise<void> => 
   res.status(201).json(savedComment);
 };
 
-export const deleteComment = async (req: Request, res: Response): Promise<void> => {
+export const deleteComment = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const clerkUserId = req.auth?.userId;
   const id = req.params.id;
 
@@ -73,4 +82,3 @@ export const deleteComment = async (req: Request, res: Response): Promise<void> 
 
   res.status(200).json("Comment deleted");
 };
-
