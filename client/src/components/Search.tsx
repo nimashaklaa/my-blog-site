@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { KeyboardEvent, ChangeEvent } from "react";
+import { KeyboardEvent } from "react";
 
 const Search = () => {
   const location = useLocation();
@@ -41,4 +41,3 @@ const Search = () => {
 };
 
 export default Search;
-

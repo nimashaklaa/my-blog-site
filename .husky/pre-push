@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running full lint and format checks..."
+
+echo "📦 Checking client..."
+cd client
+npm run lint || exit 1
+npm run format:check || exit 1
+
+echo "📦 Checking backend..."
+cd ../backend
+npm run lint || exit 1
+npm run format:check || exit 1
+
+echo "✅ All checks passed!"
+

@@ -45,10 +45,9 @@ const MainCategories = () => {
       </div>
       <span className="text-xl font-medium">|</span>
       {/* search */}
-      <Search/>
+      <Search />
     </div>
   );
 };
 
 export default MainCategories;
-

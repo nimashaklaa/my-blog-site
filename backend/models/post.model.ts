@@ -10,6 +10,7 @@ export interface IPost extends Document {
   content: string;
   isFeatured: boolean;
   visit: number;
+  claps: Types.ObjectId[]; // Array of user IDs who clapped
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -52,9 +53,13 @@ const postSchema = new Schema<IPost>(
       type: Number,
       default: 0,
     },
+    claps: {
+      type: [Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+    },
   },
   { timestamps: true }
 );
 
 export default model<IPost>("Post", postSchema);
-

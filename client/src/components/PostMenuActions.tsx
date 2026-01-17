@@ -4,7 +4,6 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Post } from "../types";
-import { ReactNode } from "react";
 
 interface PostMenuActionsProps {
   post: Post;
@@ -23,11 +22,14 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
     queryKey: ["savedPosts"],
     queryFn: async () => {
       const token = await getToken();
-      return axios.get<string[]>(`${import.meta.env.VITE_API_URL}/users/saved`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      return axios.get<string[]>(
+        `${import.meta.env.VITE_API_URL}/users/saved`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
     },
     enabled: !!user,
   });
@@ -144,8 +146,8 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
                     ? "none"
                     : "black"
                   : isSaved
-                  ? "black"
-                  : "none"
+                    ? "black"
+                    : "none"
               }
             />
           </svg>
@@ -176,8 +178,8 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
                     ? "none"
                     : "black"
                   : post.isFeatured
-                  ? "black"
-                  : "none"
+                    ? "black"
+                    : "none"
               }
             />
           </svg>
@@ -212,4 +214,3 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
 };
 
 export default PostMenuActions;
-

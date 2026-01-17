@@ -15,6 +15,9 @@ export interface Post {
   content: string;
   isFeatured: boolean;
   visit: number;
+  claps?: string[]; // Array of user IDs who clapped
+  clapCount?: number; // Total clap count
+  hasClapped?: boolean; // Whether current user has clapped
   createdAt: string;
   updatedAt?: string;
 }
@@ -32,4 +35,3 @@ export interface PostsResponse {
   posts: Post[];
   hasMore: boolean;
 }
-

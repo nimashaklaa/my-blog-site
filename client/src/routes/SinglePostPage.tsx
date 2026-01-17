@@ -1,12 +1,14 @@
 import { Link, useParams } from "react-router-dom";
+import { useUser, useAuth } from "@clerk/clerk-react";
 import Image from "../components/Image";
 import PostMenuActions from "../components/PostMenuActions";
 import Search from "../components/Search";
 import Comments from "../components/Comments";
 import axios from "axios";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "timeago.js";
 import { Post } from "../types";
+import { toast } from "react-toastify";
 
 const fetchPost = async (slug: string): Promise<Post> => {
   const res = await axios.get(`${import.meta.env.VITE_API_URL}/posts/${slug}`);
@@ -15,12 +17,51 @@ const fetchPost = async (slug: string): Promise<Post> => {
 
 const SinglePostPage = () => {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useUser();
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
 
   const { isPending, error, data } = useQuery({
     queryKey: ["post", slug],
     queryFn: () => fetchPost(slug!),
     enabled: !!slug,
   });
+
+  // Check if current user has clapped
+  const hasClapped = data?.hasClapped || false;
+
+  const clapMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) {
+        toast.error("Please login to clap!");
+        return;
+      }
+      const token = await getToken();
+      return axios.patch(
+        `${import.meta.env.VITE_API_URL}/posts/clap/${data!._id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["post", slug] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data || "Failed to clap");
+    },
+  });
+
+  const handleClap = () => {
+    if (!user) {
+      toast.error("Please login to clap!");
+      return;
+    }
+    clapMutation.mutate();
+  };
 
   if (isPending) return <div>loading...</div>;
   if (error) return <div>Something went wrong! {error.message}</div>;
@@ -36,12 +77,50 @@ const SinglePostPage = () => {
           </h1>
           <div className="flex items-center gap-2 text-gray-400 text-sm">
             <span>Written by</span>
-            <Link to={`/posts?author=${data.user.username}`} className="text-blue-800">{data.user.username}</Link>
+            <Link
+              to={`/posts?author=${data.user.username}`}
+              className="text-blue-800"
+            >
+              {data.user.username}
+            </Link>
             <span>on</span>
-            <Link to={`/posts?cat=${data.category}`} className="text-blue-800">{data.category}</Link>
+            <Link to={`/posts?cat=${data.category}`} className="text-blue-800">
+              {data.category}
+            </Link>
             <span>{format(data.createdAt)}</span>
           </div>
           <p className="text-gray-500 font-medium">{data.desc}</p>
+          {/* Clap Button */}
+          <div className="flex items-center gap-4 mt-4">
+            <button
+              onClick={handleClap}
+              disabled={clapMutation.isPending}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all ${
+                hasClapped
+                  ? "bg-blue-800 text-white border-blue-800"
+                  : "bg-white text-blue-800 border-blue-800 hover:bg-blue-50"
+              } ${clapMutation.isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5"
+              >
+                <path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-3.33 8A2 2 0 0 1 17.5 22H4.02a2 2 0 0 1-2-1.74l-1.38-9A2 2 0 0 1 2.64 10H7" />
+              </svg>
+              <span className="font-medium">
+                {data.clapCount || data.claps?.length || 0}{" "}
+                {data.clapCount === 1 || (data.claps?.length || 0) === 1
+                  ? "Clap"
+                  : "Claps"}
+              </span>
+            </button>
+          </div>
         </div>
         {data.img && (
           <div className="hidden lg:block w-2/5">
@@ -52,7 +131,10 @@ const SinglePostPage = () => {
       {/* content */}
       <div className="flex flex-col md:flex-row gap-12 justify-between">
         {/* text */}
-        <div className="lg:text-lg flex flex-col gap-6 text-justify" dangerouslySetInnerHTML={{ __html: data.content }} />
+        <div
+          className="lg:text-lg flex flex-col gap-6 text-justify"
+          dangerouslySetInnerHTML={{ __html: data.content }}
+        />
         {/* menu */}
         <div className="px-4 h-max sticky top-8">
           <h1 className="mb-4 text-sm font-medium">Author</h1>
@@ -66,11 +148,14 @@ const SinglePostPage = () => {
                   h={48}
                 />
               )}
-              <Link to={`/posts?author=${data.user.username}`} className="text-blue-800">{data.user.username}</Link>
+              <Link
+                to={`/posts?author=${data.user.username}`}
+                className="text-blue-800"
+              >
+                {data.user.username}
+              </Link>
             </div>
-            <p className="text-sm text-gray-500">
-              Lorem ipsum dolor sit amet consectetur
-            </p>
+            <p className="text-sm text-gray-500">Author</p>
             <div className="flex gap-2">
               <Link to="/">
                 <Image src="facebook.svg" />
@@ -80,10 +165,12 @@ const SinglePostPage = () => {
               </Link>
             </div>
           </div>
-          <PostMenuActions post={data}/>
+          <PostMenuActions post={data} />
           <h1 className="mt-8 mb-4 text-sm font-medium">Categories</h1>
           <div className="flex flex-col gap-2 text-sm">
-            <Link to="/posts" className="underline">All</Link>
+            <Link to="/posts" className="underline">
+              All
+            </Link>
             <Link to="/posts?cat=web-design" className="underline">
               Web Design
             </Link>
@@ -104,10 +191,9 @@ const SinglePostPage = () => {
           <Search />
         </div>
       </div>
-      <Comments postId={data._id}/>
+      <Comments postId={data._id} />
     </div>
   );
 };
 
 export default SinglePostPage;
-

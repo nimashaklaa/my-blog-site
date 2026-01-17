@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import ImageKit from "imagekit";
+import { Types } from "mongoose";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 
@@ -13,7 +14,10 @@ interface PostQuery {
   featured?: string;
 }
 
-export const getPosts = async (req: Request<{}, {}, {}, PostQuery>, res: Response): Promise<void> => {
+export const getPosts = async (
+  req: Request<{}, {}, {}, PostQuery>,
+  res: Response
+): Promise<void> => {
   const page = parseInt(req.query.page || "1");
   const limit = parseInt(req.query.limit || "2");
 
@@ -91,15 +95,47 @@ export const getPost = async (req: Request, res: Response): Promise<void> => {
     "user",
     "username img"
   );
-  res.status(200).json(post);
+
+  if (!post) {
+    res.status(404).json("Post not found!");
+    return;
+  }
+
+  const postData = post.toObject();
+  const clapsAsStrings = post.claps.map((clapId) => clapId.toString());
+
+  let hasClapped = false;
+  const clerkUserId = req.auth?.userId;
+  if (clerkUserId) {
+    const user = await User.findOne({ clerkUserId });
+    if (user && user._id) {
+      const userId = user._id as Types.ObjectId;
+      hasClapped = post.claps.some(
+        (clapUserId) => clapUserId.toString() === userId.toString()
+      );
+    }
+  }
+
+  // Create properly typed response object
+  const response = {
+    ...postData,
+    claps: clapsAsStrings,
+    clapCount: clapsAsStrings.length,
+    hasClapped,
+  };
+
+  res.status(200).json(response);
 };
 
-export const createPost = async (req: Request, res: Response): Promise<void> => {
+export const createPost = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     console.log("createPost called");
     console.log("Request body:", JSON.stringify(req.body, null, 2));
     console.log("Auth object:", req.auth);
-    
+
     const clerkUserId = req.auth?.userId;
 
     if (!clerkUserId) {
@@ -107,7 +143,15 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
       res.status(401).json("Not authenticated!");
       return;
     }
-    
+
+    // Check if user is admin - only admins can create posts
+    const role = req.auth?.sessionClaims?.metadata?.role || "user";
+
+    if (role !== "admin") {
+      res.status(403).json("Only admins can create posts!");
+      return;
+    }
+
     console.log("clerkUserId:", clerkUserId);
 
     const user = await User.findOne({ clerkUserId });
@@ -118,13 +162,25 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Validate required fields
-    if (!req.body.title || typeof req.body.title !== "string" || req.body.title.trim() === "") {
-      res.status(400).json({ error: "Title is required and must be a non-empty string" });
+    if (
+      !req.body.title ||
+      typeof req.body.title !== "string" ||
+      req.body.title.trim() === ""
+    ) {
+      res
+        .status(400)
+        .json({ error: "Title is required and must be a non-empty string" });
       return;
     }
 
-    if (!req.body.content || typeof req.body.content !== "string" || req.body.content.trim() === "") {
-      res.status(400).json({ error: "Content is required and must be a non-empty string" });
+    if (
+      !req.body.content ||
+      typeof req.body.content !== "string" ||
+      req.body.content.trim() === ""
+    ) {
+      res
+        .status(400)
+        .json({ error: "Content is required and must be a non-empty string" });
       return;
     }
 
@@ -166,7 +222,7 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
     res.status(200).json(post);
   } catch (error: any) {
     console.error("Error creating post:", error);
-    
+
     // Handle Mongoose validation errors
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err: any) => err.message);
@@ -187,15 +243,18 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
       stack: error.stack,
       code: error.code,
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message || "Failed to create post",
       message: error.message || "Failed to create post",
-      details: process.env.NODE_ENV === "development" ? error.stack : undefined
+      details: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 };
 
-export const deletePost = async (req: Request, res: Response): Promise<void> => {
+export const deletePost = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const clerkUserId = req.auth?.userId;
 
   if (!clerkUserId) {
@@ -231,7 +290,10 @@ export const deletePost = async (req: Request, res: Response): Promise<void> => 
   res.status(200).json("Post has been deleted");
 };
 
-export const featurePost = async (req: Request, res: Response): Promise<void> => {
+export const featurePost = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const clerkUserId = req.auth?.userId;
   const postId = req.body.postId;
 
@@ -267,6 +329,59 @@ export const featurePost = async (req: Request, res: Response): Promise<void> =>
   res.status(200).json(updatedPost);
 };
 
+export const toggleClap = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  console.log("toggleClap called - Route hit!");
+  console.log("Request params:", req.params);
+  console.log("Request method:", req.method);
+  console.log("Request path:", req.path);
+
+  const clerkUserId = req.auth?.userId;
+  const postId = req.params.id;
+
+  console.log("Post ID:", postId);
+  console.log("Clerk User ID:", clerkUserId);
+
+  if (!clerkUserId) {
+    res.status(401).json("Not authenticated!");
+    return;
+  }
+
+  const user = await User.findOne({ clerkUserId });
+
+  if (!user) {
+    res.status(404).json("User not found!");
+    return;
+  }
+
+  const post = await Post.findById(postId);
+
+  if (!post) {
+    res.status(404).json("Post not found!");
+    return;
+  }
+
+  const userId = user._id as Types.ObjectId;
+  const clapIndex = post.claps.findIndex(
+    (clapUserId) => clapUserId.toString() === userId.toString()
+  );
+
+  if (clapIndex === -1) {
+    // Add clap
+    post.claps.push(userId);
+  } else {
+    // Remove clap
+    post.claps.splice(clapIndex, 1);
+  }
+
+  const updatedPost = await post.save();
+  res
+    .status(200)
+    .json({ claps: updatedPost.claps, clapCount: updatedPost.claps.length });
+};
+
 // Lazy-load ImageKit only when needed
 const getImageKit = (): ImageKit => {
   const urlEndpoint = process.env.IK_URL_ENDPOINT;
@@ -286,17 +401,19 @@ const getImageKit = (): ImageKit => {
   });
 };
 
-export const uploadAuth = async (_req: Request, res: Response): Promise<void> => {
+export const uploadAuth = async (
+  _req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const imagekit = getImageKit();
     const result = imagekit.getAuthenticationParameters();
     res.json(result);
   } catch (error: any) {
     console.error("ImageKit upload auth error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message || "ImageKit configuration error",
-      message: error.message || "ImageKit configuration error"
+      message: error.message || "ImageKit configuration error",
     });
   }
 };
-

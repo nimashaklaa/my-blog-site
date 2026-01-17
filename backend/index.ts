@@ -18,26 +18,40 @@ if (!process.env.CLIENT_URL) {
 }
 
 if (!process.env.CLERK_SECRET_KEY) {
-  throw new Error("CLERK_SECRET_KEY environment variable is not set. Please add it to your .env file.");
+  throw new Error(
+    "CLERK_SECRET_KEY environment variable is not set. Please add it to your .env file."
+  );
 }
 
 // Note: CLERK_PUBLISHABLE_KEY is required by clerkMiddleware() for token verification
 // It's used to validate the token's audience and ensure it was issued for the correct application
 if (!process.env.CLERK_PUBLISHABLE_KEY) {
-  throw new Error("CLERK_PUBLISHABLE_KEY environment variable is not set. Please add it to your .env file. This is required by Clerk's middleware for token verification.");
+  throw new Error(
+    "CLERK_PUBLISHABLE_KEY environment variable is not set. Please add it to your .env file. This is required by Clerk's middleware for token verification."
+  );
 }
 
 // Validate publishable key format (should start with pk_test_ or pk_live_)
 const publishableKey = process.env.CLERK_PUBLISHABLE_KEY.trim();
-if (!publishableKey.startsWith("pk_test_") && !publishableKey.startsWith("pk_live_")) {
+if (
+  !publishableKey.startsWith("pk_test_") &&
+  !publishableKey.startsWith("pk_live_")
+) {
   throw new Error(
     `CLERK_PUBLISHABLE_KEY has invalid format. It should start with "pk_test_" or "pk_live_". ` +
-    `Current value starts with: "${publishableKey.substring(0, 10)}..." ` +
-    `Make sure you're using the same publishable key as your frontend (VITE_CLERK_PUBLISHABLE_KEY).`
+      `Current value starts with: "${publishableKey.substring(0, 10)}..." ` +
+      `Make sure you're using the same publishable key as your frontend (VITE_CLERK_PUBLISHABLE_KEY).`
   );
 }
 
-app.use(cors({ origin: process.env.CLIENT_URL }));
+const corsOptions = {
+  origin: process.env.CLIENT_URL,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 // Webhook routes MUST come before express.json() and clerkMiddleware
 // because they need raw body for Svix signature verification
@@ -50,28 +64,32 @@ app.get("/posts/upload-auth", uploadAuth);
 
 // Clerk middleware for authenticated routes
 // Pass keys explicitly to ensure proper formatting
-app.use(clerkMiddleware({
-  publishableKey: publishableKey,
-  secretKey: process.env.CLERK_SECRET_KEY.trim(),
-}));
-
-app.use(function (_req: Request, res: Response, next: NextFunction) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  );
-  next();
-});
+app.use(
+  clerkMiddleware({
+    publishableKey: publishableKey,
+    secretKey: process.env.CLERK_SECRET_KEY.trim(),
+  })
+);
 
 app.use("/users", userRouter);
 app.use("/posts", postRouter);
 app.use("/comments", commentRouter);
 
+// Debug: Log all registered routes
+console.log("Registered routes:");
+console.log("  GET    /posts");
+console.log("  POST   /posts");
+console.log("  PATCH  /posts/feature");
+console.log("  PATCH  /posts/clap/:id");
+console.log("  DELETE /posts/:id");
+console.log("  GET    /posts/:slug");
+console.log("  GET    /users/saved");
+console.log("  PATCH  /users/save");
+
 app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error("Unhandled error:", error);
   console.error("Error stack:", error.stack);
-  
+
   res.status(500).json({
     error: error.message || "Something went wrong!",
     message: error.message || "Something went wrong!",
@@ -85,4 +103,3 @@ app.listen(PORT, () => {
   connectDB();
   console.log(`Server is running on port ${PORT}!`);
 });
-

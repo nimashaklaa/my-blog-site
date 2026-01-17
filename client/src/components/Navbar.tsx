@@ -46,15 +46,30 @@ const Navbar = () => {
             open ? "-right-0" : "-right-[100%]"
           }`}
         >
-          <Link to="/" onClick={()=>setOpen(false)}>Home</Link>
-          <Link to="/posts?sort=trending" onClick={()=>setOpen(false)}>Trending</Link>
-          <Link to="/posts?sort=popular" onClick={()=>setOpen(false)}>Most Popular</Link>
-          <Link to="/" onClick={()=>setOpen(false)}>About</Link>
-          <Link to="/login" onClick={()=>setOpen(false)}>
-            <button className="py-2 px-4 rounded-3xl bg-blue-800 text-white">
-              Login 👋
-            </button>
+          <Link to="/" onClick={() => setOpen(false)}>
+            Home
           </Link>
+          <Link to="/posts?sort=trending" onClick={() => setOpen(false)}>
+            Trending
+          </Link>
+          <Link to="/posts?sort=popular" onClick={() => setOpen(false)}>
+            Most Popular
+          </Link>
+          <Link to="/" onClick={() => setOpen(false)}>
+            About
+          </Link>
+          <SignedOut>
+            <Link to="/login" onClick={() => setOpen(false)}>
+              <button className="py-2 px-4 rounded-3xl bg-blue-800 text-white">
+                Login 👋
+              </button>
+            </Link>
+          </SignedOut>
+          <SignedIn>
+            <div onClick={() => setOpen(false)}>
+              <UserButton />
+            </div>
+          </SignedIn>
         </div>
       </div>
       {/* DESKTOP MENU */}
@@ -79,4 +94,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

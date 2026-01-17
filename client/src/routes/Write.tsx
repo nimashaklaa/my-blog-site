@@ -14,12 +14,23 @@ interface UploadData {
 }
 
 const Write = () => {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
+  const navigate = useNavigate();
   const [value, setValue] = useState<string>("");
   const [cover, setCover] = useState<UploadData>({});
   const [img, setImg] = useState<UploadData>({});
   const [video, setVideo] = useState<UploadData>({});
   const [progress, setProgress] = useState<number>(0);
+
+  const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (isLoaded && (!isSignedIn || !isAdmin)) {
+      toast.error("Only admins can create posts!");
+      navigate("/");
+    }
+  }, [isLoaded, isSignedIn, isAdmin, navigate]);
 
   useEffect(() => {
     if (img.url) {
@@ -34,8 +45,6 @@ const Write = () => {
       );
     }
   }, [video]);
-
-  const navigate = useNavigate();
 
   const { getToken } = useAuth();
 
@@ -61,9 +70,9 @@ const Write = () => {
     onError: (error: any) => {
       console.error("Error creating post:", error);
       console.error("Error response:", error.response?.data);
-      
+
       let errorMessage = "Failed to create post. Please try again.";
-      
+
       if (error.response?.data) {
         // Try to get the error message from the response
         if (typeof error.response.data === "string") {
@@ -73,14 +82,14 @@ const Write = () => {
         } else if (error.response.data.message) {
           errorMessage = error.response.data.message;
         } else if (error.response.data.details) {
-          errorMessage = Array.isArray(error.response.data.details) 
+          errorMessage = Array.isArray(error.response.data.details)
             ? error.response.data.details.join(", ")
             : error.response.data.details;
         }
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast.error(errorMessage);
     },
   });
@@ -91,6 +100,10 @@ const Write = () => {
 
   if (isLoaded && !isSignedIn) {
     return <div className="">You should login!</div>;
+  }
+
+  if (isLoaded && isSignedIn && !isAdmin) {
+    return <div className="">Only admins can create posts!</div>;
   }
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -115,7 +128,10 @@ const Write = () => {
       <h1 className="text-cl font-light">Create a New Post</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 flex-1 mb-6">
         <Upload type="image" setProgress={setProgress} setData={setCover}>
-          <button type="button" className="w-max p-2 shadow-md rounded-xl text-sm text-gray-500 bg-white">
+          <button
+            type="button"
+            className="w-max p-2 shadow-md rounded-xl text-sm text-gray-500 bg-white"
+          >
             Add a cover image
           </button>
         </Upload>
@@ -178,4 +194,3 @@ const Write = () => {
 };
 
 export default Write;
-

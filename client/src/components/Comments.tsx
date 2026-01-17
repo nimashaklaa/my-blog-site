@@ -110,4 +110,3 @@ const Comments = ({ postId }: CommentsProps) => {
 };
 
 export default Comments;
-

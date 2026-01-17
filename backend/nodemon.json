@@ -4,4 +4,3 @@
   "exec": "ts-node --esm index.ts",
   "ignore": ["node_modules", "dist"]
 }
-

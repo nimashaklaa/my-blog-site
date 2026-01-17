@@ -1,0 +1,29 @@
+{
+  "name": "full-stack-blog",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky",
+    "lint:all": "cd client && npm run lint && cd ../backend && npm run lint",
+    "format:all": "cd client && npm run format && cd ../backend && npm run format"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nimashaklaa/my-blog-site.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nimashaklaa/my-blog-site/issues"
+  },
+  "homepage": "https://github.com/nimashaklaa/my-blog-site#readme",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.0"
+  }
+}

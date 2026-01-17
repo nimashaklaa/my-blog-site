@@ -11,23 +11,16 @@ interface ImageProps {
 const Image = ({ src, className, w, h, alt }: ImageProps) => {
   const urlEndpoint = import.meta.env.VITE_IK_URL_ENDPOINT;
 
-  // Check if it's a local file (common local file extensions or paths)
-  const isLocalFile = 
-    !src.startsWith('http') && 
-    !src.startsWith('https') &&
-    (src.endsWith('.png') || 
-     src.endsWith('.jpg') || 
-     src.endsWith('.jpeg') || 
-     src.endsWith('.svg') || 
-     src.endsWith('.gif') ||
-     src.includes('/public/') ||
-     src.startsWith('/'));
+  const isExternalUrl = src.startsWith("http://") || src.startsWith("https://");
 
-  // Use regular img tag for local files or if ImageKit is not configured
-  if (isLocalFile || !urlEndpoint) {
-    // For local files in public folder, Vite serves them from root
-    const imageSrc = src.startsWith('/') ? src : `/${src}`;
-    
+  const isLocalAsset = !src.includes("/") || src.endsWith(".svg");
+
+  if (isExternalUrl || isLocalAsset || !urlEndpoint) {
+    const imageSrc = isExternalUrl
+      ? src
+      : src.startsWith("/")
+        ? src
+        : `/${src}`;
     return (
       <img
         src={imageSrc}
@@ -62,4 +55,3 @@ const Image = ({ src, className, w, h, alt }: ImageProps) => {
 };
 
 export default Image;
-

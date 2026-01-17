@@ -29,4 +29,3 @@ const commentSchema = new Schema<IComment>(
 );
 
 export default model<IComment>("Comment", commentSchema);
-

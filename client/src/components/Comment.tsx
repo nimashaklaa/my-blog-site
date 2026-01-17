@@ -72,4 +72,3 @@ const Comment = ({ comment, postId }: CommentProps) => {
 };
 
 export default Comment;
-

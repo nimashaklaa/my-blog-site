@@ -39,4 +39,3 @@ const userSchema = new Schema<IUser>(
 );
 
 export default model<IUser>("User", userSchema);
-
