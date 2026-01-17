@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import ImageKit from "imagekit";
-import { Types } from "mongoose";
-import Post from "../models/post.model.js";
+import { Types, FilterQuery, SortOrder } from "mongoose";
+import Post, { IPost } from "../models/post.model.js";
 import User from "../models/user.model.js";
 
 interface PostQuery {
@@ -15,13 +15,18 @@ interface PostQuery {
 }
 
 export const getPosts = async (
-  req: Request<{}, {}, {}, PostQuery>,
+  req: Request<
+    Record<string, never>,
+    Record<string, never>,
+    Record<string, never>,
+    PostQuery
+  >,
   res: Response
 ): Promise<void> => {
   const page = parseInt(req.query.page || "1");
   const limit = parseInt(req.query.limit || "2");
 
-  const query: any = {};
+  const query: FilterQuery<IPost> = {};
 
   console.log(req.query);
 
@@ -50,7 +55,7 @@ export const getPosts = async (
     query.user = user._id;
   }
 
-  let sortObj: any = { createdAt: -1 };
+  let sortObj: Record<string, SortOrder> = { createdAt: -1 };
 
   if (sortQuery) {
     switch (sortQuery) {
@@ -220,33 +225,57 @@ export const createPost = async (
 
     const post = await newPost.save();
     res.status(200).json(post);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating post:", error);
 
     // Handle Mongoose validation errors
-    if (error.name === "ValidationError") {
-      const errors = Object.values(error.errors).map((err: any) => err.message);
+    if (
+      error &&
+      typeof error === "object" &&
+      "name" in error &&
+      error.name === "ValidationError" &&
+      "errors" in error &&
+      typeof error.errors === "object"
+    ) {
+      const errors = Object.values(error.errors).map(
+        (err: { message?: string }) => err.message || "Validation error"
+      );
       res.status(400).json({ error: "Validation error", details: errors });
       return;
     }
 
     // Handle duplicate key errors (e.g., duplicate slug)
-    if (error.code === 11000) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === 11000
+    ) {
       res.status(400).json({ error: "A post with this slug already exists" });
       return;
     }
 
     // Generic error
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : "Failed to create post";
+    const errorStack =
+      error instanceof Error && process.env.NODE_ENV === "development"
+        ? error.stack
+        : undefined;
+
     console.error("Full error details:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
+      error,
+      message: errorMessage,
+      stack: errorStack,
     });
     res.status(500).json({
-      error: error.message || "Failed to create post",
-      message: error.message || "Failed to create post",
-      details: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      error: errorMessage,
+      message: errorMessage,
+      details: errorStack,
     });
   }
 };
@@ -409,11 +438,13 @@ export const uploadAuth = async (
     const imagekit = getImageKit();
     const result = imagekit.getAuthenticationParameters();
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("ImageKit upload auth error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "ImageKit configuration error";
     res.status(500).json({
-      error: error.message || "ImageKit configuration error",
-      message: error.message || "ImageKit configuration error",
+      error: errorMessage,
+      message: errorMessage,
     });
   }
 };
