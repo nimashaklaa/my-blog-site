@@ -22,11 +22,16 @@ export interface Post {
   updatedAt?: string;
 }
 
+export type CommentReactionType = "like" | "love" | "laugh";
+
 export interface Comment {
   _id: string;
   user: User;
   post: string;
   desc: string;
+  parentComment?: string | null;
+  reactionCounts?: Record<CommentReactionType, number>;
+  myReaction?: CommentReactionType | null;
   createdAt: string;
   updatedAt?: string;
 }
