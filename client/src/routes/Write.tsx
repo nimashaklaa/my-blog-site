@@ -42,6 +42,7 @@ const Write = () => {
   const [progress, setProgress] = useState(0);
   const [editorKey, setEditorKey] = useState(0);
   const [initialEditorContent, setInitialEditorContent] = useState("");
+  const lastSyncedDraftIdRef = useRef<string | null>(null);
 
   const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
 
@@ -76,7 +77,16 @@ const Write = () => {
   });
 
   useEffect(() => {
-    if (currentDraft) {
+    if (!selectedDraftId) {
+      lastSyncedDraftIdRef.current = null;
+      return;
+    }
+    if (
+      currentDraft &&
+      currentDraft._id === selectedDraftId &&
+      currentDraft._id !== lastSyncedDraftIdRef.current
+    ) {
+      lastSyncedDraftIdRef.current = currentDraft._id;
       setTitle(currentDraft.title);
       setCategory(currentDraft.category || "general");
       setDesc(currentDraft.desc || "");
@@ -85,7 +95,14 @@ const Write = () => {
       setCover(currentDraft.img ? { filePath: currentDraft.img } : {});
       setEditorKey((k) => k + 1);
     }
-  }, [currentDraft?._id]);
+  }, [currentDraft, selectedDraftId]);
+
+  const hasContentToSave = !!(
+    title.trim() ||
+    value.trim() ||
+    desc.trim() ||
+    cover.filePath
+  );
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !isAdmin) return;
@@ -102,7 +119,7 @@ const Write = () => {
           await axios.put(`${API_URL}/drafts/${selectedDraftId}`, payload, {
             headers: await authHeaders(),
           });
-        } else {
+        } else if (hasContentToSave) {
           const res = await axios.post<DraftRecord>(
             `${API_URL}/drafts`,
             payload,
@@ -112,7 +129,9 @@ const Write = () => {
           );
           setSelectedDraftId(res.data._id);
         }
-        queryClient.invalidateQueries({ queryKey: ["drafts"] });
+        if (selectedDraftId || hasContentToSave) {
+          queryClient.invalidateQueries({ queryKey: ["drafts"] });
+        }
       } catch {
         // silent fail for auto-save
       }
@@ -128,6 +147,7 @@ const Write = () => {
     value,
     cover.filePath,
     selectedDraftId,
+    hasContentToSave,
     queryClient,
   ]);
 
@@ -256,9 +276,9 @@ const Write = () => {
             disabled={draftsLoading}
           >
             <option value="">New draft</option>
-            {drafts.map((d) => (
+            {drafts.map((d, i) => (
               <option key={d._id} value={d._id}>
-                {d.title || "Untitled"} (
+                {d.title?.trim() || `Draft ${i + 1}`} (
                 {new Date(d.updatedAt).toLocaleDateString()})
               </option>
             ))}

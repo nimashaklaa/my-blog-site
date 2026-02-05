@@ -43,10 +43,7 @@ const alias = aliasMatch[1];
 
 // Replace every bare call  alias(x)  →  alias(x, { ancestorScroll: false })
 // The pattern: alias followed by ( , a single identifier arg, then )
-const callPattern = new RegExp(
-  `\\b${alias}\\((\\w+)\\)`,
-  "g"
-);
+const callPattern = new RegExp(`\\b${alias}\\((\\w+)\\)`, "g");
 
 const patched = content.replace(
   callPattern,
