@@ -1,19 +1,43 @@
 import { useParams } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
+import { useMemo, useState } from "react";
 import Image from "../components/Image";
 import PostMenuActions from "../components/PostMenuActions";
 import Comments from "../components/Comments";
 import PostContent from "../components/PostContent";
 import axios, { AxiosError } from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format } from "timeago.js";
-import { Post } from "../types";
+import { Post, Comment } from "../types";
 import { toast } from "react-toastify";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const fetchPost = async (slug: string): Promise<Post> => {
-  const res = await axios.get(`${import.meta.env.VITE_API_URL}/posts/${slug}`);
+  const res = await axios.get(`${API_URL}/posts/${slug}`);
   return res.data;
 };
+
+const fetchComments = async (postId: string): Promise<Comment[]> => {
+  const res = await axios.get(`${API_URL}/comments/${postId}`);
+  return res.data;
+};
+
+function getReadTimeMinutes(html: string): number {
+  const text = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 200));
+}
+
+function formatPostDate(createdAt: string): string {
+  return new Date(createdAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 const SinglePostPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -27,8 +51,16 @@ const SinglePostPage = () => {
     enabled: !!slug,
   });
 
-  // Check if current user has clapped
+  const { data: comments = [] } = useQuery({
+    queryKey: ["comments", data?._id],
+    queryFn: () => fetchComments(data!._id),
+    enabled: !!data?._id,
+  });
+
+  const [moreOpen, setMoreOpen] = useState(false);
   const hasClapped = data?.hasClapped || false;
+  const readTime = data ? getReadTimeMinutes(data.content) : 0;
+  const postUrl = useMemo(() => window.location.href, [slug]);
 
   const clapMutation = useMutation({
     mutationFn: async () => {
@@ -71,13 +103,34 @@ const SinglePostPage = () => {
     clapMutation.mutate();
   };
 
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: data!.title,
+          text: data!.desc || undefined,
+          url: postUrl,
+        });
+        toast.success("Link copied to share");
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        toast.success("Link copied to clipboard");
+      }
+    } catch {
+      await navigator.clipboard.writeText(postUrl);
+      toast.success("Link copied to clipboard");
+    }
+  };
+
+  const clapCount = data?.clapCount ?? data?.claps?.length ?? 0;
+
   if (isPending) return <div>loading...</div>;
   if (error) return <div>Something went wrong! {error.message}</div>;
   if (!data) return <div>Post not found!</div>;
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* cover image - full width like Write preview */}
+    <div className="flex flex-col gap-8 max-w-3xl mx-auto">
+      {/* cover image */}
       {data.img && (
         <div className="w-full rounded-xl overflow-hidden bg-gray-100 max-h-64">
           <Image
@@ -87,24 +140,90 @@ const SinglePostPage = () => {
           />
         </div>
       )}
-      {/* detail */}
-      <div className="flex gap-8">
-        <div className="lg:w-3/5 flex flex-col gap-8">
-          <h1 className="text-xl md:text-3xl xl:text-4xl 2xl:text-5xl font-semibold">
-            {data.title}
-          </h1>
-          <div className="text-gray-400 text-sm">{format(data.createdAt)}</div>
-          <p className="text-gray-500 font-medium">{data.desc}</p>
-          {/* Clap Button */}
-          <div className="flex items-center gap-4 mt-4">
+      {/* title */}
+      <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-gray-900">
+        {data.title}
+      </h1>
+      {/* meta: date · read time */}
+      <div className="flex items-center gap-2 text-gray-500 text-sm">
+        <time dateTime={data.createdAt}>{formatPostDate(data.createdAt)}</time>
+        <span aria-hidden>·</span>
+        <span>{readTime} min read</span>
+      </div>
+      <div className="border-t border-gray-200 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-6 text-gray-500">
+          <button
+            type="button"
+            onClick={handleClap}
+            disabled={clapMutation.isPending}
+            className={`flex items-center gap-2 transition-colors ${
+              hasClapped ? "text-blue-800" : "hover:text-gray-700"
+            } ${clapMutation.isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+            aria-label="Clap"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill={hasClapped ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5"
+            >
+              <path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-3.33 8A2 2 0 0 1 17.5 22H4.02a2 2 0 0 1-2-1.74l-1.38-9A2 2 0 0 1 2.64 10H7" />
+            </svg>
+            <span className="text-sm">{clapCount}</span>
+          </button>
+          <a
+            href="#comments"
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
+            aria-label="Comments"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5"
+            >
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span className="text-sm">{comments.length}</span>
+          </a>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleShare}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Share"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5"
+            >
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+          </button>
+          <div className="relative">
             <button
-              onClick={handleClap}
-              disabled={clapMutation.isPending}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all ${
-                hasClapped
-                  ? "bg-blue-800 text-white border-blue-800"
-                  : "bg-white text-blue-800 border-blue-800 hover:bg-blue-50"
-              } ${clapMutation.isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              type="button"
+              onClick={() => setMoreOpen((o) => !o)}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="More actions"
+              aria-expanded={moreOpen}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -112,34 +231,38 @@ const SinglePostPage = () => {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
                 className="w-5 h-5"
               >
-                <path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-3.33 8A2 2 0 0 1 17.5 22H4.02a2 2 0 0 1-2-1.74l-1.38-9A2 2 0 0 1 2.64 10H7" />
+                <circle cx="12" cy="12" r="1" />
+                <circle cx="19" cy="12" r="1" />
+                <circle cx="5" cy="12" r="1" />
               </svg>
-              <span className="font-medium">
-                {data.clapCount || data.claps?.length || 0}{" "}
-                {data.clapCount === 1 || (data.claps?.length || 0) === 1
-                  ? "Clap"
-                  : "Claps"}
-              </span>
             </button>
+            {moreOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  aria-hidden
+                  onClick={() => setMoreOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 py-1 min-w-[160px] bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                  <PostMenuActions
+                    post={data}
+                    onAction={() => setMoreOpen(false)}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
       {/* content */}
-      <div className="flex flex-col md:flex-row gap-12 justify-between">
-        {/* text */}
-        <div className="lg:text-lg flex flex-col gap-6 text-justify">
-          <PostContent content={data.content} />
-        </div>
-        {/* menu */}
-        <div className="px-4 h-max sticky top-8">
-          <PostMenuActions post={data} />
-        </div>
+      <div className="lg:text-lg flex flex-col gap-6 text-justify">
+        <PostContent content={data.content} />
       </div>
-      <Comments postId={data._id} />
+      <div id="comments">
+        <Comments postId={data._id} />
+      </div>
     </div>
   );
 };

@@ -7,9 +7,10 @@ import { Post } from "../types";
 
 interface PostMenuActionsProps {
   post: Post;
+  onAction?: () => void;
 }
 
-const PostMenuActions = ({ post }: PostMenuActionsProps) => {
+const PostMenuActions = ({ post, onAction }: PostMenuActionsProps) => {
   const { user } = useUser();
   const { getToken } = useAuth();
   const navigate = useNavigate();
@@ -129,10 +130,12 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
 
   const handleDelete = () => {
     deleteMutation.mutate();
+    onAction?.();
   };
 
   const handleFeature = () => {
     featureMutation.mutate();
+    onAction?.();
   };
 
   const handleSave = () => {
@@ -140,6 +143,7 @@ const PostMenuActions = ({ post }: PostMenuActionsProps) => {
       return navigate("/login");
     }
     saveMutation.mutate();
+    onAction?.();
   };
 
   return (
