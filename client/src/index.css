@@ -13,12 +13,9 @@ body {
   animation-duration: 10000ms;
 }
 
-.ql-container {
-  border: none !important;
-}
-.ql-toolbar {
-  border: none !important;
-}
-.ql-editor {
-  border: none !important;
+/* Prevent mouse-wheel scroll inside BlockNote menus from propagating to the
+   editor/page, which would cause the menu to reposition and close. */
+.bn-suggestion-menu,
+.bn-grid-suggestion-menu {
+  overscroll-behavior: contain;
 }

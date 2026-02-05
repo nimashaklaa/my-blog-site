@@ -3,6 +3,7 @@ import ImageKit from "imagekit";
 import { Types, FilterQuery, SortOrder } from "mongoose";
 import Post, { IPost } from "../models/post.model.js";
 import User from "../models/user.model.js";
+import { getUserRole } from "../lib/getUserRole.js";
 
 interface PostQuery {
   page?: string;
@@ -150,7 +151,7 @@ export const createPost = async (
     }
 
     // Check if user is admin - only admins can create posts
-    const role = req.auth?.sessionClaims?.metadata?.role || "user";
+    const role = await getUserRole(clerkUserId);
 
     if (role !== "admin") {
       res.status(403).json("Only admins can create posts!");
@@ -291,7 +292,7 @@ export const deletePost = async (
     return;
   }
 
-  const role = req.auth?.sessionClaims?.metadata?.role || "user";
+  const role = await getUserRole(clerkUserId);
 
   if (role === "admin") {
     await Post.findByIdAndDelete(req.params.id);
@@ -331,7 +332,7 @@ export const featurePost = async (
     return;
   }
 
-  const role = req.auth?.sessionClaims?.metadata?.role || "user";
+  const role = await getUserRole(clerkUserId);
 
   if (role !== "admin") {
     res.status(403).json("You cannot feature posts!");

@@ -4,6 +4,7 @@ import Image from "../components/Image";
 import PostMenuActions from "../components/PostMenuActions";
 import Search from "../components/Search";
 import Comments from "../components/Comments";
+import PostContent from "../components/PostContent";
 import axios, { AxiosError } from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "timeago.js";
@@ -139,10 +140,9 @@ const SinglePostPage = () => {
       {/* content */}
       <div className="flex flex-col md:flex-row gap-12 justify-between">
         {/* text */}
-        <div
-          className="lg:text-lg flex flex-col gap-6 text-justify"
-          dangerouslySetInnerHTML={{ __html: data.content }}
-        />
+        <div className="lg:text-lg flex flex-col gap-6 text-justify">
+          <PostContent content={data.content} />
+        </div>
         {/* menu */}
         <div className="px-4 h-max sticky top-8">
           <h1 className="mb-4 text-sm font-medium">Author</h1>

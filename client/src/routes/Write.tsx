@@ -1,6 +1,4 @@
 import { useAuth, useUser } from "@clerk/clerk-react";
-import "react-quill-new/dist/quill.snow.css";
-import ReactQuill from "react-quill-new";
 import { useMutation } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
 import { useEffect, useState, FormEvent } from "react";
@@ -8,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Upload from "../components/Upload";
 import Image from "../components/Image";
+import Editor from "../components/Editor";
 
 interface UploadData {
   filePath?: string;
@@ -19,8 +18,6 @@ const Write = () => {
   const navigate = useNavigate();
   const [value, setValue] = useState<string>("");
   const [cover, setCover] = useState<UploadData>({});
-  const [img, setImg] = useState<UploadData>({});
-  const [video, setVideo] = useState<UploadData>({});
   const [progress, setProgress] = useState<number>(0);
 
   const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
@@ -32,20 +29,6 @@ const Write = () => {
       navigate("/");
     }
   }, [isLoaded, isSignedIn, isAdmin, navigate]);
-
-  useEffect(() => {
-    if (img.url) {
-      setValue((prev) => prev + `<p><image src="${img.url}"/></p>`);
-    }
-  }, [img]);
-
-  useEffect(() => {
-    if (video.url) {
-      setValue(
-        (prev) => prev + `<p><iframe class="ql-video" src="${video.url}"/></p>`
-      );
-    }
-  }, [video]);
 
   const { getToken } = useAuth();
 
@@ -130,7 +113,7 @@ const Write = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] flex flex-col gap-6">
+    <div className="min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-80px)] flex flex-col gap-6">
       <h1 className="text-cl font-light">Create a New Post</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 flex-1 mb-6">
         <div className="flex flex-col gap-2">
@@ -189,21 +172,10 @@ const Write = () => {
           name="desc"
           placeholder="A Short Description"
         />
-        <div className="flex flex-1 ">
-          <div className="flex flex-col gap-2 mr-2">
-            <Upload type="image" setProgress={setProgress} setData={setImg}>
-              <button type="button">🌆</button>
-            </Upload>
-            <Upload type="video" setProgress={setProgress} setData={setVideo}>
-              <button type="button">▶️</button>
-            </Upload>
-          </div>
-          <ReactQuill
-            theme="snow"
-            className="flex-1 rounded-xl bg-white shadow-md"
-            value={value}
+        <div className="min-h-[500px] rounded-xl bg-white shadow-md">
+          <Editor
             onChange={setValue}
-            readOnly={0 < progress && progress < 100}
+            editable={progress === 0 || progress >= 100}
           />
         </div>
         <button

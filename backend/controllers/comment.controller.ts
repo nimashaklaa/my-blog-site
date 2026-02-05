@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Comment from "../models/comment.model.js";
 import User from "../models/user.model.js";
+import { getUserRole } from "../lib/getUserRole.js";
 
 export const getPostComments = async (
   req: Request,
@@ -55,7 +56,7 @@ export const deleteComment = async (
     return;
   }
 
-  const role = req.auth?.sessionClaims?.metadata?.role || "user";
+  const role = await getUserRole(clerkUserId);
 
   if (role === "admin") {
     await Comment.findByIdAndDelete(req.params.id);
