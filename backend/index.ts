@@ -75,6 +75,22 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Prevent duplicate Access-Control-Allow-Origin (e.g. from Clerk adding "null").
+// Keep only the first valid value so the browser sees a single header.
+app.use((_req, res, next) => {
+  const setHeader = res.setHeader.bind(res);
+  res.setHeader = function (name: string, value: string | number | string[]) {
+    if (String(name).toLowerCase() === "access-control-allow-origin") {
+      const existing = res.getHeader("Access-Control-Allow-Origin");
+      if (existing) return res; // already set (e.g. by cors), skip duplicate
+      const val = Array.isArray(value) ? value[0] : value;
+      if (val === "null" || val === null || val === undefined) return res; // skip null
+    }
+    return setHeader(name, value as string | number | string[]);
+  };
+  next();
+});
+
 // Webhook routes MUST come before express.json() and clerkMiddleware
 // because they need raw body for Svix signature verification
 app.use("/webhooks", webhookRouter);

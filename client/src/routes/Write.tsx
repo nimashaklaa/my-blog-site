@@ -7,6 +7,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Upload from "../components/Upload";
+import Image from "../components/Image";
 
 interface UploadData {
   filePath?: string;
@@ -132,14 +133,34 @@ const Write = () => {
     <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] flex flex-col gap-6">
       <h1 className="text-cl font-light">Create a New Post</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 flex-1 mb-6">
-        <Upload type="image" setProgress={setProgress} setData={setCover}>
-          <button
-            type="button"
-            className="w-max p-2 shadow-md rounded-xl text-sm text-gray-500 bg-white"
-          >
-            Add a cover image
-          </button>
-        </Upload>
+        <div className="flex flex-col gap-2">
+          {cover.url ? (
+            <div className="relative rounded-xl overflow-hidden bg-gray-100 max-h-64 w-full">
+              <Image
+                src={cover.url}
+                alt="Cover preview"
+                className="w-full h-full object-cover max-h-64"
+              />
+              <Upload type="image" setProgress={setProgress} setData={setCover}>
+                <button
+                  type="button"
+                  className="absolute bottom-2 right-2 p-2 shadow-md rounded-lg text-sm text-gray-600 bg-white/90 hover:bg-white"
+                >
+                  Change cover
+                </button>
+              </Upload>
+            </div>
+          ) : (
+            <Upload type="image" setProgress={setProgress} setData={setCover}>
+              <button
+                type="button"
+                className="w-max p-2 shadow-md rounded-xl text-sm text-gray-500 bg-white"
+              >
+                Add a cover image
+              </button>
+            </Upload>
+          )}
+        </div>
         <input
           className="text-4xl font-semibold bg-transparent outline-none"
           type="text"
