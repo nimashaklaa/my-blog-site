@@ -130,6 +130,126 @@ function formatPostDate(createdAt: string): string {
   });
 }
 
+/** BlockNote block with optional props (level, url, caption). */
+interface BlockForMd {
+  type?: string;
+  content?: { text?: string }[];
+  children?: BlockForMd[];
+  props?: { level?: number; url?: string; caption?: string };
+}
+
+/** Convert post content (BlockNote JSON or HTML) to Markdown. */
+function contentToMarkdown(content: string): string {
+  try {
+    const parsed = JSON.parse(content) as BlockForMd[];
+    if (!Array.isArray(parsed)) throw new Error("not array");
+
+    const lines: string[] = [];
+
+    function processBlock(block: BlockForMd, listPrefix?: string): void {
+      const text = getInlineText(block.content).trim();
+
+      switch (block.type) {
+        case "heading": {
+          const level = Math.min(6, Math.max(1, block.props?.level ?? 1));
+          lines.push(`${"#".repeat(level)} ${text}`);
+          break;
+        }
+        case "bulletListItem":
+          lines.push(`${listPrefix ?? "-"} ${text}`);
+          break;
+        case "numberedListItem":
+          lines.push(`${listPrefix ?? "1."} ${text}`);
+          break;
+        case "checkListItem":
+          lines.push(`- [ ] ${text}`);
+          break;
+        case "codeBlock":
+          lines.push("```");
+          lines.push(text || "");
+          lines.push("```");
+          break;
+        case "image": {
+          const url = block.props?.url ?? "";
+          const caption = block.props?.caption?.trim();
+          if (caption) lines.push(`![${caption}](${url})`);
+          else lines.push(`![](${url})`);
+          break;
+        }
+        default:
+          if (text) lines.push(text);
+          break;
+      }
+
+      if (block.children?.length) {
+        for (let i = 0; i < block.children.length; i++) {
+          const child = block.children[i];
+          const subPrefix =
+            child.type === "numberedListItem" ? `${i + 1}.` : "  -";
+          processBlock(child, subPrefix);
+        }
+      }
+    }
+
+    for (const block of parsed) {
+      processBlock(block);
+    }
+
+    return lines
+      .join("\n\n")
+      .replace(/\n\n\n+/g, "\n\n")
+      .trim();
+  } catch {
+    // Legacy HTML: strip tags to plain text, basic structure
+    const div = document.createElement("div");
+    div.innerHTML = content;
+    const walk = (el: Element): string[] => {
+      const out: string[] = [];
+      for (const node of el.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const t = node.textContent?.trim();
+          if (t) out.push(t);
+          continue;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        const e = node as Element;
+        const tag = e.tagName.toLowerCase();
+        const inner = walk(e).join(" ");
+        if (tag === "h1") out.push(`# ${inner}`);
+        else if (tag === "h2") out.push(`## ${inner}`);
+        else if (tag === "h3") out.push(`### ${inner}`);
+        else if (tag === "p" || tag === "div") out.push(inner);
+        else if (tag === "li") out.push(`- ${inner}`);
+        else if (tag === "pre" || tag === "code")
+          out.push("```\n" + inner + "\n```");
+        else if (inner) out.push(inner);
+      }
+      return out;
+    };
+    return walk(div).filter(Boolean).join("\n\n");
+  }
+}
+
+function getPostMarkdown(post: Post): string {
+  const mdContent = contentToMarkdown(post.content);
+  const dateStr = formatPostDate(post.createdAt);
+  const parts: string[] = [`# ${post.title}`, "", dateStr, ""];
+  if (post.img) parts.push(`![Cover](${post.img})`, "");
+  parts.push(mdContent);
+  return parts.join("\n");
+}
+
+function downloadPostAsMarkdown(post: Post): void {
+  const text = getPostMarkdown(post);
+  const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${post.slug || post._id}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const SinglePostPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useUser();
@@ -149,6 +269,7 @@ const SinglePostPage = () => {
   });
 
   const [moreOpen, setMoreOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const hasClapped = data?.hasClapped || false;
@@ -264,6 +385,25 @@ const SinglePostPage = () => {
     clapMutation.mutate();
   };
 
+  const handleCopyMarkdown = async () => {
+    if (!data) return;
+    try {
+      await navigator.clipboard.writeText(getPostMarkdown(data));
+      toast.success("Markdown copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
+    setExportOpen(false);
+  };
+
+  const handleDownloadMarkdown = () => {
+    if (data) {
+      downloadPostAsMarkdown(data);
+      toast.success("Downloaded as Markdown");
+    }
+    setExportOpen(false);
+  };
+
   const handleShare = async () => {
     try {
       if (navigator.share) {
@@ -290,7 +430,7 @@ const SinglePostPage = () => {
   if (!data) return <div>Post not found!</div>;
 
   return (
-    <div className="flex flex-col gap-8 max-w-4xl mx-auto">
+    <div className="flex flex-col gap-6 sm:gap-8 max-w-4xl mx-auto w-full min-w-0 px-1 sm:px-0 box-border">
       {/* Cover image */}
       {data.img && (
         <div className="w-full rounded-xl overflow-hidden bg-gray-100 max-h-64">
@@ -308,7 +448,7 @@ const SinglePostPage = () => {
       </h1>
 
       {/* Meta: date + read time + listen */}
-      <div className="flex items-center gap-2 text-gray-500 text-sm">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-500 text-sm">
         <time dateTime={data.createdAt}>{formatPostDate(data.createdAt)}</time>
         <span aria-hidden>·</span>
         <span>{readTime} min read</span>
@@ -316,9 +456,9 @@ const SinglePostPage = () => {
         <button
           type="button"
           onClick={handleListen}
-          className={`flex items-center gap-1 transition-colors ${
+          className={`flex items-center gap-1.5 transition-colors touch-manipulation ${
             isSpeaking ? "text-blue-800" : "text-gray-500 hover:text-gray-700"
-          } cursor-pointer`}
+          } cursor-pointer min-h-[44px] min-w-[44px] -m-1 p-1 justify-center`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -328,7 +468,7 @@ const SinglePostPage = () => {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="w-4 h-4"
+            className="w-4 h-4 shrink-0"
           >
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
             {isSpeaking ? (
@@ -343,18 +483,20 @@ const SinglePostPage = () => {
               </>
             )}
           </svg>
-          <span>{isSpeaking ? "Stop" : "Listen"}</span>
+          <span className="whitespace-nowrap">
+            {isSpeaking ? "Stop" : "Listen"}
+          </span>
         </button>
       </div>
 
       {/* Action bar */}
-      <div className="border-t border-b border-gray-400 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-5">
+      <div className="border-t border-b border-gray-400 py-2 sm:py-2.5 flex flex-wrap items-center justify-between gap-3 min-w-0">
+        <div className="flex items-center gap-3 sm:gap-5 min-w-0">
           <button
             type="button"
             onClick={handleClap}
             disabled={clapMutation.isPending}
-            className={`flex items-center gap-1.5 transition-colors ${
+            className={`flex items-center gap-1.5 transition-colors touch-manipulation min-h-[44px] px-1 -mx-1 rounded ${
               hasClapped ? "text-blue-800" : "text-gray-500 hover:text-gray-700"
             } ${clapMutation.isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
             aria-label="Clap"
@@ -367,15 +509,15 @@ const SinglePostPage = () => {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-5 h-5"
+              className="w-5 h-5 shrink-0"
             >
               <path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-3.33 8A2 2 0 0 1 17.5 22H4.02a2 2 0 0 1-2-1.74l-1.38-9A2 2 0 0 1 2.64 10H7" />
             </svg>
-            <span className="text-sm">{clapCount}</span>
+            <span className="text-sm tabular-nums">{clapCount}</span>
           </button>
           <a
             href="#comments"
-            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-700 transition-colors min-h-[44px] items-center px-1 -mx-1 rounded touch-manipulation"
             aria-label="Comments"
           >
             <svg
@@ -386,18 +528,91 @@ const SinglePostPage = () => {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-5 h-5"
+              className="w-5 h-5 shrink-0"
             >
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-            <span className="text-sm">{comments.length}</span>
+            <span className="text-sm tabular-nums">{comments.length}</span>
           </a>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setExportOpen((o) => !o)}
+              className="p-2.5 sm:p-2 text-gray-500 hover:text-gray-700 rounded-full transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Export as Markdown"
+              title="Export as Markdown"
+              aria-expanded={exportOpen}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+            {exportOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  aria-hidden
+                  onClick={() => setExportOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] w-max bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                  <button
+                    type="button"
+                    onClick={handleCopyMarkdown}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-4 h-4"
+                    >
+                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                    </svg>
+                    Copy Markdown
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadMarkdown}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-4 h-4"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Download .md
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button
             type="button"
             onClick={handleShare}
-            className="p-2 text-gray-500 hover:text-gray-700 rounded-full transition-colors"
+            className="p-2.5 sm:p-2 text-gray-500 hover:text-gray-700 rounded-full transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Share"
           >
             <svg
@@ -419,7 +634,7 @@ const SinglePostPage = () => {
             <button
               type="button"
               onClick={() => setMoreOpen((o) => !o)}
-              className="p-2 text-gray-500 hover:text-gray-700 rounded-full transition-colors"
+              className="p-2.5 sm:p-2 text-gray-500 hover:text-gray-700 rounded-full transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
               aria-label="More actions"
               aria-expanded={moreOpen}
             >
@@ -443,7 +658,7 @@ const SinglePostPage = () => {
                   aria-hidden
                   onClick={() => setMoreOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 py-1 min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                <div className="absolute right-0 top-full mt-1 py-1 min-w-[160px] max-w-[calc(100vw-2rem)] w-max bg-white border border-gray-200 rounded-lg shadow-lg z-20">
                   <PostMenuActions
                     post={data}
                     onAction={() => setMoreOpen(false)}
@@ -456,7 +671,7 @@ const SinglePostPage = () => {
       </div>
 
       {/* Content */}
-      <div className="lg:text-lg flex flex-col gap-6 text-justify">
+      <div className="lg:text-lg flex flex-col gap-6 text-justify min-w-0 overflow-x-auto">
         <PostContent content={data.content} />
       </div>
 

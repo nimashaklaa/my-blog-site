@@ -7,7 +7,7 @@ const Navbar = () => {
   const [open, setOpen] = useState<boolean>(false);
 
   return (
-    <div className="w-full h-16 md:h-20 flex items-center justify-between">
+    <div className="relative w-full min-w-0 h-16 md:h-20 flex items-center justify-between">
       {/* LOGO */}
       <Link to="/" className="flex items-center gap-4 text-2xl font-bold">
         <Image src="logo.png" alt="Lama Logo" w={32} h={32} />
@@ -42,8 +42,8 @@ const Navbar = () => {
         </div>
         {/* MOBILE LINK LIST */}
         <div
-          className={`w-full h-screen bg-[#e6e6ff] flex flex-col items-center justify-center gap-8 font-medium text-lg absolute top-16 transition-all ease-in-out ${
-            open ? "-right-0" : "-right-[100%]"
+          className={`fixed inset-0 top-16 left-0 w-full h-[calc(100vh-4rem)] bg-[#e6e6ff] flex flex-col items-center justify-center gap-8 font-medium text-lg z-30 transition-transform duration-300 ease-in-out ${
+            open ? "translate-x-0" : "translate-x-full"
           }`}
         >
           <Link to="/" onClick={() => setOpen(false)}>

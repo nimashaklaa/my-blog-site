@@ -26,17 +26,17 @@ const Homepage = () => {
   }
 
   return (
-    <div className="mt-4 flex flex-col gap-4">
+    <div className="mt-4 flex flex-col gap-4 w-full min-w-0">
       {/* BREADCRUMB */}
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
         <Link to="/">Home</Link>
         <span>•</span>
         <span className="text-blue-800">Blogs and Articles</span>
       </div>
       {/* INTRODUCTION */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 min-w-0">
         {/* titles */}
-        <div className="">
+        <div className="min-w-0">
           <h1 className="text-gray-800 text-2xl md:text-5xl lg:text-6xl font-bold">
             Welcome to My Blog
           </h1>
