@@ -1,38 +1,137 @@
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, useRef, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Upload from "../components/Upload";
 import Image from "../components/Image";
 import Editor from "../components/Editor";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface UploadData {
   filePath?: string;
   url?: string;
 }
 
+interface DraftRecord {
+  _id: string;
+  title: string;
+  category: string;
+  desc: string;
+  content: string;
+  img?: string;
+  updatedAt: string;
+}
+
 const Write = () => {
+  const { getToken } = useAuth();
   const { isLoaded, isSignedIn, user } = useUser();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
   const navigate = useNavigate();
-  const [value, setValue] = useState<string>("");
+  const queryClient = useQueryClient();
+
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("general");
+  const [desc, setDesc] = useState("");
+  const [value, setValue] = useState("");
   const [cover, setCover] = useState<UploadData>({});
-  const [progress, setProgress] = useState<number>(0);
+  const [progress, setProgress] = useState(0);
+  const [editorKey, setEditorKey] = useState(0);
+  const [initialEditorContent, setInitialEditorContent] = useState("");
 
   const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
 
-  // Redirect non-admin users
+  const authHeaders = async () => ({
+    Authorization: `Bearer ${await getTokenRef.current()}`,
+  });
+
+  const { data: drafts = [], isLoading: draftsLoading } = useQuery({
+    queryKey: ["drafts"],
+    queryFn: async () => {
+      const res = await axios.get<DraftRecord[]>(`${API_URL}/drafts`, {
+        headers: await authHeaders(),
+      });
+      return res.data;
+    },
+    enabled: isLoaded && isSignedIn && isAdmin,
+  });
+
+  const { data: currentDraft, isLoading: draftLoading } = useQuery({
+    queryKey: ["draft", selectedDraftId],
+    queryFn: async () => {
+      if (!selectedDraftId) return null;
+      const res = await axios.get<DraftRecord>(
+        `${API_URL}/drafts/${selectedDraftId}`,
+        {
+          headers: await authHeaders(),
+        }
+      );
+      return res.data;
+    },
+    enabled: isLoaded && isSignedIn && isAdmin && !!selectedDraftId,
+  });
+
   useEffect(() => {
-    if (isLoaded && (!isSignedIn || !isAdmin)) {
-      toast.error("Only admins can create posts!");
-      navigate("/");
+    if (currentDraft) {
+      setTitle(currentDraft.title);
+      setCategory(currentDraft.category || "general");
+      setDesc(currentDraft.desc || "");
+      setValue(currentDraft.content || "");
+      setInitialEditorContent(currentDraft.content || "");
+      setCover(currentDraft.img ? { filePath: currentDraft.img } : {});
+      setEditorKey((k) => k + 1);
     }
-  }, [isLoaded, isSignedIn, isAdmin, navigate]);
+  }, [currentDraft?._id]);
 
-  const { getToken } = useAuth();
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !isAdmin) return;
+    const timer = setTimeout(async () => {
+      const payload = {
+        title,
+        category,
+        desc,
+        content: value,
+        img: cover.filePath || "",
+      };
+      try {
+        if (selectedDraftId) {
+          await axios.put(`${API_URL}/drafts/${selectedDraftId}`, payload, {
+            headers: await authHeaders(),
+          });
+        } else {
+          const res = await axios.post<DraftRecord>(
+            `${API_URL}/drafts`,
+            payload,
+            {
+              headers: await authHeaders(),
+            }
+          );
+          setSelectedDraftId(res.data._id);
+        }
+        queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      } catch {
+        // silent fail for auto-save
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [
+    isLoaded,
+    isSignedIn,
+    isAdmin,
+    title,
+    category,
+    desc,
+    value,
+    cover.filePath,
+    selectedDraftId,
+    queryClient,
+  ]);
 
-  const mutation = useMutation({
+  const createPostMutation = useMutation({
     mutationFn: async (newPost: {
       img: string;
       title: string;
@@ -40,14 +139,22 @@ const Write = () => {
       desc: string;
       content: string;
     }) => {
-      const token = await getToken();
-      return axios.post(`${import.meta.env.VITE_API_URL}/posts`, newPost, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const token = await getTokenRef.current();
+      return axios.post(`${API_URL}/posts`, newPost, {
+        headers: { Authorization: `Bearer ${token}` },
       });
     },
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
+      if (selectedDraftId) {
+        try {
+          await axios.delete(`${API_URL}/drafts/${selectedDraftId}`, {
+            headers: await authHeaders(),
+          });
+          queryClient.invalidateQueries({ queryKey: ["drafts"] });
+        } catch {
+          // ignore
+        }
+      }
       toast.success("Post has been created");
       navigate(`/${res.data.slug}`);
     },
@@ -56,71 +163,129 @@ const Write = () => {
         | string
         | { error?: string; message?: string; details?: string | string[] }
       >;
-      console.error("Error creating post:", axiosError);
-      console.error("Error response:", axiosError.response?.data);
-
       let errorMessage = "Failed to create post. Please try again.";
-
       if (axiosError.response?.data) {
-        const responseData = axiosError.response.data;
-        // Try to get the error message from the response
-        if (typeof responseData === "string") {
-          errorMessage = responseData;
-        } else if (responseData.error) {
-          errorMessage = responseData.error;
-        } else if (responseData.message) {
-          errorMessage = responseData.message;
-        } else if (responseData.details) {
-          errorMessage = Array.isArray(responseData.details)
-            ? responseData.details.join(", ")
-            : responseData.details;
-        }
-      } else if (axiosError.message) {
-        errorMessage = axiosError.message;
+        const d = axiosError.response.data;
+        if (typeof d === "string") errorMessage = d;
+        else if (d && typeof d === "object" && "error" in d)
+          errorMessage = (d as { error?: string }).error ?? errorMessage;
+        else if (d && typeof d === "object" && "message" in d)
+          errorMessage = (d as { message?: string }).message ?? errorMessage;
       }
-
       toast.error(errorMessage);
     },
   });
 
-  if (!isLoaded) {
-    return <div className="">Loading...</div>;
-  }
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await axios.delete(`${API_URL}/drafts/${id}`, {
+        headers: await authHeaders(),
+      });
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      if (selectedDraftId === id) {
+        setSelectedDraftId(null);
+        setTitle("");
+        setCategory("general");
+        setDesc("");
+        setValue("");
+        setInitialEditorContent("");
+        setCover({});
+        setEditorKey((k) => k + 1);
+      }
+      toast.success("Draft deleted");
+    },
+    onError: () => toast.error("Failed to delete draft"),
+  });
 
-  if (isLoaded && !isSignedIn) {
-    return <div className="">You should login!</div>;
-  }
+  useEffect(() => {
+    if (isLoaded && (!isSignedIn || !isAdmin)) {
+      toast.error("Only admins can create posts!");
+      navigate("/");
+    }
+  }, [isLoaded, isSignedIn, isAdmin, navigate]);
 
-  if (isLoaded && isSignedIn && !isAdmin) {
+  if (!isLoaded) return <div className="">Loading...</div>;
+  if (isLoaded && !isSignedIn) return <div className="">You should login!</div>;
+  if (isLoaded && isSignedIn && !isAdmin)
     return <div className="">Only admins can create posts!</div>;
-  }
+
+  const handleNewDraft = () => {
+    setSelectedDraftId(null);
+    setTitle("");
+    setCategory("general");
+    setDesc("");
+    setValue("");
+    setInitialEditorContent("");
+    setCover({});
+    setEditorKey((k) => k + 1);
+  };
+
+  const handleSelectDraft = (id: string) => {
+    setSelectedDraftId(id);
+  };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-
-    const data = {
+    createPostMutation.mutate({
       img: cover.filePath || "",
-      title: formData.get("title") as string,
-      category: formData.get("category") as string,
-      desc: formData.get("desc") as string,
+      title: title.trim(),
+      category,
+      desc: desc.trim(),
       content: value,
-    };
-
-    console.log(data);
-
-    mutation.mutate(data);
+    });
   };
+
+  const isLoadingDraft = !!selectedDraftId && draftLoading;
 
   return (
     <div className="min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-80px)] flex flex-col gap-6">
-      <h1 className="text-cl font-light">Create a New Post</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-cl font-light">Create a New Post</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-sm text-gray-600">Drafts:</label>
+          <select
+            className="p-2 rounded-xl bg-white shadow-md text-sm min-w-[180px]"
+            value={selectedDraftId ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "") handleNewDraft();
+              else handleSelectDraft(v);
+            }}
+            disabled={draftsLoading}
+          >
+            <option value="">New draft</option>
+            {drafts.map((d) => (
+              <option key={d._id} value={d._id}>
+                {d.title || "Untitled"} (
+                {new Date(d.updatedAt).toLocaleDateString()})
+              </option>
+            ))}
+          </select>
+          {selectedDraftId && (
+            <button
+              type="button"
+              onClick={() => deleteDraftMutation.mutate(selectedDraftId)}
+              disabled={deleteDraftMutation.isPending}
+              className="p-2 rounded-xl text-sm border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              Delete draft
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isLoadingDraft && (
+        <div className="text-sm text-gray-500">Loading draft...</div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 flex-1 mb-6">
         <div className="flex flex-col gap-2">
-          {cover.url ? (
+          {cover.url || cover.filePath ? (
             <div className="relative rounded-xl overflow-hidden bg-gray-100 max-h-64 w-full">
               <Image
-                src={cover.url}
+                src={cover.url || cover.filePath || ""}
                 alt="Cover preview"
                 className="w-full h-full object-cover max-h-64"
               />
@@ -148,16 +313,18 @@ const Write = () => {
           className="text-4xl font-semibold bg-transparent outline-none"
           type="text"
           placeholder="My Awesome Story"
-          name="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
         />
         <div className="flex items-center gap-4">
           <label htmlFor="category" className="text-sm">
             Choose a category:
           </label>
           <select
-            name="category"
             id="category"
             className="p-2 rounded-xl bg-white shadow-md"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
           >
             <option value="general">General</option>
             <option value="web-design">Web Design</option>
@@ -169,23 +336,27 @@ const Write = () => {
         </div>
         <textarea
           className="p-4 rounded-xl bg-white shadow-md"
-          name="desc"
           placeholder="A Short Description"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
         />
         <div className="min-h-[500px] rounded-xl bg-white shadow-md">
           <Editor
+            key={editorKey}
+            initialContent={initialEditorContent || undefined}
             onChange={setValue}
             editable={progress === 0 || progress >= 100}
           />
         </div>
         <button
           type="submit"
-          disabled={mutation.isPending || (0 < progress && progress < 100)}
+          disabled={
+            createPostMutation.isPending || (progress > 0 && progress < 100)
+          }
           className="bg-blue-800 text-white font-medium rounded-xl mt-4 p-2 w-36 disabled:bg-blue-400 disabled:cursor-not-allowed"
         >
-          {mutation.isPending ? "Loading..." : "Send"}
+          {createPostMutation.isPending ? "Publishing..." : "Publish"}
         </button>
-        <div>{"Progress:" + progress}</div>
       </form>
     </div>
   );
