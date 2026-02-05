@@ -51,6 +51,21 @@ const ChatInput = ({
 
   return (
     <div className="relative flex items-end gap-2 w-full rounded-2xl border border-gray-200 bg-white px-3 py-2">
+      <textarea
+        ref={textareaRef}
+        rows={1}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          adjustHeight();
+        }}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        className="flex-1 resize-none bg-transparent outline-none text-sm leading-5 max-h-[120px] py-1"
+      />
+
       <div className="relative">
         <button
           type="button"
@@ -66,21 +81,6 @@ const ChatInput = ({
           </div>
         )}
       </div>
-
-      <textarea
-        ref={textareaRef}
-        rows={1}
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          adjustHeight();
-        }}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={disabled}
-        autoFocus={autoFocus}
-        className="flex-1 resize-none bg-transparent outline-none text-sm leading-5 max-h-[120px] py-1"
-      />
 
       <button
         type="button"
