@@ -70,8 +70,8 @@ const Comments = ({ postId }: CommentsProps) => {
   };
 
   return (
-    <div className="flex flex-col gap-8 lg:w-3/5 mb-12">
-      <h1 className="text-xl text-gray-500 underline">Comments</h1>
+    <div className="flex flex-col gap-6 mb-12">
+      <h1 className="text-xl font-semibold text-gray-900">Comments</h1>
       <form
         onSubmit={handleSubmit}
         className="flex items-center justify-between gap-8 w-full"

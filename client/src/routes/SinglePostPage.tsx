@@ -22,12 +22,30 @@ const fetchComments = async (postId: string): Promise<Comment[]> => {
   return res.data;
 };
 
-function getReadTimeMinutes(html: string): number {
-  const text = html
-    .replace(/<[^>]*>/g, " ")
+function getReadTimeMinutes(content: string): number {
+  let text = content;
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) {
+      text = parsed
+        .map((block) => {
+          if (block.content && Array.isArray(block.content)) {
+            return block.content
+              .map((c: { text?: string }) => c.text || "")
+              .join(" ");
+          }
+          return "";
+        })
+        .join(" ");
+    }
+  } catch {
+    text = content.replace(/<[^>]*>/g, " ");
+  }
+  const words = text
     .replace(/\s+/g, " ")
-    .trim();
-  const words = text.split(/\s+/).filter(Boolean).length;
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
 }
 
@@ -124,13 +142,13 @@ const SinglePostPage = () => {
 
   const clapCount = data?.clapCount ?? data?.claps?.length ?? 0;
 
-  if (isPending) return <div>loading...</div>;
+  if (isPending) return <div>Loading...</div>;
   if (error) return <div>Something went wrong! {error.message}</div>;
   if (!data) return <div>Post not found!</div>;
 
   return (
-    <div className="flex flex-col gap-8 max-w-3xl mx-auto">
-      {/* cover image */}
+    <div className="flex flex-col gap-8 max-w-4xl mx-auto">
+      {/* Cover image */}
       {data.img && (
         <div className="w-full rounded-xl overflow-hidden bg-gray-100 max-h-64">
           <Image
@@ -140,24 +158,28 @@ const SinglePostPage = () => {
           />
         </div>
       )}
-      {/* title */}
+
+      {/* Title */}
       <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-gray-900">
         {data.title}
       </h1>
-      {/* meta: date · read time */}
+
+      {/* Meta: date + read time */}
       <div className="flex items-center gap-2 text-gray-500 text-sm">
         <time dateTime={data.createdAt}>{formatPostDate(data.createdAt)}</time>
         <span aria-hidden>·</span>
         <span>{readTime} min read</span>
       </div>
-      <div className="border-t border-gray-200 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-6 text-gray-500">
+
+      {/* Action bar */}
+      <div className="border-t border-b border-gray-400 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-5">
           <button
             type="button"
             onClick={handleClap}
             disabled={clapMutation.isPending}
-            className={`flex items-center gap-2 transition-colors ${
-              hasClapped ? "text-blue-800" : "hover:text-gray-700"
+            className={`flex items-center gap-1.5 transition-colors ${
+              hasClapped ? "text-blue-800" : "text-gray-500 hover:text-gray-700"
             } ${clapMutation.isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
             aria-label="Clap"
           >
@@ -177,7 +199,7 @@ const SinglePostPage = () => {
           </button>
           <a
             href="#comments"
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
+            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-700 transition-colors"
             aria-label="Comments"
           >
             <svg
@@ -195,11 +217,11 @@ const SinglePostPage = () => {
             <span className="text-sm">{comments.length}</span>
           </a>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={handleShare}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-gray-500 hover:text-gray-700 rounded-full transition-colors"
             aria-label="Share"
           >
             <svg
@@ -221,7 +243,7 @@ const SinglePostPage = () => {
             <button
               type="button"
               onClick={() => setMoreOpen((o) => !o)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-700 rounded-full transition-colors"
               aria-label="More actions"
               aria-expanded={moreOpen}
             >
@@ -245,7 +267,7 @@ const SinglePostPage = () => {
                   aria-hidden
                   onClick={() => setMoreOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-1 py-1 min-w-[160px] bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                <div className="absolute right-0 top-full mt-1 py-1 min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg z-20">
                   <PostMenuActions
                     post={data}
                     onAction={() => setMoreOpen(false)}
@@ -256,10 +278,13 @@ const SinglePostPage = () => {
           </div>
         </div>
       </div>
-      {/* content */}
+
+      {/* Content */}
       <div className="lg:text-lg flex flex-col gap-6 text-justify">
         <PostContent content={data.content} />
       </div>
+
+      {/* Comments */}
       <div id="comments">
         <Comments postId={data._id} />
       </div>
