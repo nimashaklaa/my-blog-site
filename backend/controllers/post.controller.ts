@@ -16,12 +16,7 @@ interface PostQuery {
 }
 
 export const getPosts = async (
-  req: Request<
-    Record<string, never>,
-    Record<string, never>,
-    Record<string, never>,
-    PostQuery
-  >,
+  req: Request<Record<string, string | string[]>, unknown, unknown, PostQuery>,
   res: Response
 ): Promise<void> => {
   const page = parseInt(req.query.page || "1");
@@ -236,10 +231,12 @@ export const createPost = async (
       "name" in error &&
       error.name === "ValidationError" &&
       "errors" in error &&
-      typeof error.errors === "object"
+      typeof error.errors === "object" &&
+      error.errors !== null
     ) {
-      const errors = Object.values(error.errors).map(
-        (err: { message?: string }) => err.message || "Validation error"
+      const errMap = error.errors as Record<string, { message?: string }>;
+      const errors = Object.values(errMap).map(
+        (err) => err.message || "Validation error"
       );
       res.status(400).json({ error: "Validation error", details: errors });
       return;
@@ -279,6 +276,72 @@ export const createPost = async (
       details: errorStack,
     });
   }
+};
+
+export const updatePost = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const clerkUserId = req.auth?.userId;
+  const postId = req.params.id;
+
+  if (!clerkUserId) {
+    res.status(401).json("Not authenticated!");
+    return;
+  }
+
+  const role = await getUserRole(clerkUserId);
+  const user = await User.findOne({ clerkUserId });
+
+  if (!user) {
+    res.status(404).json("User not found!");
+    return;
+  }
+
+  const post = await Post.findById(postId);
+
+  if (!post) {
+    res.status(404).json("Post not found!");
+    return;
+  }
+
+  // Only the author or an admin can edit
+  const userId = user._id as Types.ObjectId;
+  if (role !== "admin" && post.user.toString() !== userId.toString()) {
+    res.status(403).json("You can only edit your own posts!");
+    return;
+  }
+
+  if (
+    !req.body.title ||
+    typeof req.body.title !== "string" ||
+    req.body.title.trim() === ""
+  ) {
+    res
+      .status(400)
+      .json({ error: "Title is required and must be a non-empty string" });
+    return;
+  }
+
+  if (
+    !req.body.content ||
+    typeof req.body.content !== "string" ||
+    req.body.content.trim() === ""
+  ) {
+    res
+      .status(400)
+      .json({ error: "Content is required and must be a non-empty string" });
+    return;
+  }
+
+  post.title = req.body.title.trim();
+  post.category = req.body.category || "general";
+  post.desc = req.body.desc?.trim() || "";
+  post.content = req.body.content.trim();
+  post.img = req.body.img || "";
+
+  const updatedPost = await post.save();
+  res.status(200).json(updatedPost);
 };
 
 export const deletePost = async (

@@ -3,6 +3,7 @@ import {
   getPosts,
   getPost,
   createPost,
+  updatePost,
   deletePost,
   featurePost,
   toggleClap,
@@ -30,6 +31,7 @@ router.post("/", asyncHandler(createPost));
 router.patch("/feature", asyncHandler(featurePost));
 // Clap route - using /clap/:id pattern to avoid conflicts with /:slug
 router.patch("/clap/:id", asyncHandler(toggleClap));
+router.put("/:id", asyncHandler(updatePost));
 router.delete("/:id", asyncHandler(deletePost));
 // Slug route must be last as it's a catch-all for GET requests
 router.get("/:slug", increaseVisit, asyncHandler(getPost));

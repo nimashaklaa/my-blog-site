@@ -22,44 +22,41 @@ if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
 }
 
-const router = createBrowserRouter(
-  [
-    {
-      element: <MainLayout />,
-      children: [
-        {
-          path: "/",
-          element: <Homepage />,
-        },
-        {
-          path: "/posts",
-          element: <PostListPage />,
-        },
-        {
-          path: "/:slug",
-          element: <SinglePostPage />,
-        },
-        {
-          path: "/write",
-          element: <Write />,
-        },
-        {
-          path: "/login",
-          element: <LoginPage />,
-        },
-        {
-          path: "/register",
-          element: <RegisterPage />,
-        },
-      ],
-    },
-  ],
+const router = createBrowserRouter([
   {
-    future: {
-      v7_startTransition: true,
-    },
-  }
-);
+    element: <MainLayout />,
+    children: [
+      {
+        path: "/",
+        element: <Homepage />,
+      },
+      {
+        path: "/posts",
+        element: <PostListPage />,
+      },
+      {
+        path: "/:slug",
+        element: <SinglePostPage />,
+      },
+      {
+        path: "/write",
+        element: <Write />,
+      },
+      {
+        path: "/edit/:slug",
+        element: <Write />,
+      },
+      {
+        path: "/login",
+        element: <LoginPage />,
+      },
+      {
+        path: "/register",
+        element: <RegisterPage />,
+      },
+    ],
+  },
+]);
 
 const rootElement = document.getElementById("root");
 

@@ -2,11 +2,12 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
 import { useEffect, useState, useRef, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Upload from "../components/Upload";
 import Image from "../components/Image";
 import Editor from "../components/Editor";
+import { Post } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -32,6 +33,8 @@ const Write = () => {
   getTokenRef.current = getToken;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { slug: editSlug } = useParams<{ slug?: string }>();
+  const isEditMode = !!editSlug;
 
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -43,12 +46,39 @@ const Write = () => {
   const [editorKey, setEditorKey] = useState(0);
   const [initialEditorContent, setInitialEditorContent] = useState("");
   const lastSyncedDraftIdRef = useRef<string | null>(null);
+  const editPostLoadedRef = useRef<string | null>(null);
 
   const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
 
   const authHeaders = async () => ({
     Authorization: `Bearer ${await getTokenRef.current()}`,
   });
+
+  const { data: editPost, isLoading: editPostLoading } = useQuery({
+    queryKey: ["post", editSlug],
+    queryFn: async () => {
+      const res = await axios.get<Post>(`${API_URL}/posts/${editSlug}`);
+      return res.data;
+    },
+    enabled: isEditMode,
+  });
+
+  useEffect(() => {
+    if (
+      editPost &&
+      editPost.slug === editSlug &&
+      editPostLoadedRef.current !== editSlug
+    ) {
+      editPostLoadedRef.current = editSlug!;
+      setTitle(editPost.title);
+      setCategory(editPost.category || "general");
+      setDesc(editPost.desc || "");
+      setValue(editPost.content || "");
+      setInitialEditorContent(editPost.content || "");
+      setCover(editPost.img ? { filePath: editPost.img } : {});
+      setEditorKey((k) => k + 1);
+    }
+  }, [editPost, editSlug]);
 
   const { data: drafts = [], isLoading: draftsLoading } = useQuery({
     queryKey: ["drafts"],
@@ -105,7 +135,7 @@ const Write = () => {
   );
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || !isAdmin) return;
+    if (!isLoaded || !isSignedIn || !isAdmin || isEditMode) return;
     const timer = setTimeout(async () => {
       const payload = {
         title,
@@ -196,6 +226,42 @@ const Write = () => {
     },
   });
 
+  const updatePostMutation = useMutation({
+    mutationFn: async (updatedPost: {
+      img: string;
+      title: string;
+      category: string;
+      desc: string;
+      content: string;
+    }) => {
+      const token = await getTokenRef.current();
+      return axios.put(`${API_URL}/posts/${editPost?._id}`, updatedPost, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["post", editSlug] });
+      toast.success("Post has been updated");
+      navigate(`/${editSlug}`);
+    },
+    onError: (error: unknown) => {
+      const axiosError = error as AxiosError<
+        | string
+        | { error?: string; message?: string; details?: string | string[] }
+      >;
+      let errorMessage = "Failed to update post. Please try again.";
+      if (axiosError.response?.data) {
+        const d = axiosError.response.data;
+        if (typeof d === "string") errorMessage = d;
+        else if (d && typeof d === "object" && "error" in d)
+          errorMessage = (d as { error?: string }).error ?? errorMessage;
+        else if (d && typeof d === "object" && "message" in d)
+          errorMessage = (d as { message?: string }).message ?? errorMessage;
+      }
+      toast.error(errorMessage);
+    },
+  });
+
   const deleteDraftMutation = useMutation({
     mutationFn: async (id: string) => {
       await axios.delete(`${API_URL}/drafts/${id}`, {
@@ -248,55 +314,70 @@ const Write = () => {
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    createPostMutation.mutate({
+    const payload = {
       img: cover.filePath || "",
       title: title.trim(),
       category,
       desc: desc.trim(),
       content: value,
-    });
+    };
+    if (isEditMode) {
+      updatePostMutation.mutate(payload);
+    } else {
+      createPostMutation.mutate(payload);
+    }
   };
 
   const isLoadingDraft = !!selectedDraftId && draftLoading;
+  const isMutating = isEditMode
+    ? updatePostMutation.isPending
+    : createPostMutation.isPending;
 
   return (
     <div className="min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-80px)] flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-cl font-light">Create a New Post</h1>
-        <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-sm text-gray-600">Drafts:</label>
-          <select
-            className="p-2 rounded-xl bg-white shadow-md text-sm min-w-[180px]"
-            value={selectedDraftId ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "") handleNewDraft();
-              else handleSelectDraft(v);
-            }}
-            disabled={draftsLoading}
-          >
-            <option value="">New draft</option>
-            {drafts.map((d, i) => (
-              <option key={d._id} value={d._id}>
-                {d.title?.trim() || `Draft ${i + 1}`} (
-                {new Date(d.updatedAt).toLocaleDateString()})
-              </option>
-            ))}
-          </select>
-          {selectedDraftId && (
-            <button
-              type="button"
-              onClick={() => deleteDraftMutation.mutate(selectedDraftId)}
-              disabled={deleteDraftMutation.isPending}
-              className="p-2 rounded-xl text-sm border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+        <h1 className="text-cl font-light">
+          {isEditMode ? "Edit Post" : "Create a New Post"}
+        </h1>
+        {!isEditMode && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-sm text-gray-600">Drafts:</label>
+            <select
+              className="p-2 rounded-xl bg-white shadow-md text-sm min-w-[180px]"
+              value={selectedDraftId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") handleNewDraft();
+                else handleSelectDraft(v);
+              }}
+              disabled={draftsLoading}
             >
-              Delete draft
-            </button>
-          )}
-        </div>
+              <option value="">New draft</option>
+              {drafts.map((d, i) => (
+                <option key={d._id} value={d._id}>
+                  {d.title?.trim() || `Draft ${i + 1}`} (
+                  {new Date(d.updatedAt).toLocaleDateString()})
+                </option>
+              ))}
+            </select>
+            {selectedDraftId && (
+              <button
+                type="button"
+                onClick={() => deleteDraftMutation.mutate(selectedDraftId)}
+                disabled={deleteDraftMutation.isPending}
+                className="p-2 rounded-xl text-sm border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
+                Delete draft
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {isLoadingDraft && (
+      {isEditMode && editPostLoading && (
+        <div className="text-sm text-gray-500">Loading post...</div>
+      )}
+      {!isEditMode && isLoadingDraft && (
         <div className="text-sm text-gray-500">Loading draft...</div>
       )}
 
@@ -370,12 +451,16 @@ const Write = () => {
         </div>
         <button
           type="submit"
-          disabled={
-            createPostMutation.isPending || (progress > 0 && progress < 100)
-          }
+          disabled={isMutating || (progress > 0 && progress < 100)}
           className="bg-blue-800 text-white font-medium rounded-xl mt-4 p-2 w-36 disabled:bg-blue-400 disabled:cursor-not-allowed"
         >
-          {createPostMutation.isPending ? "Publishing..." : "Publish"}
+          {isMutating
+            ? isEditMode
+              ? "Updating..."
+              : "Publishing..."
+            : isEditMode
+              ? "Update"
+              : "Publish"}
         </button>
       </form>
     </div>
