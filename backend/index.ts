@@ -44,8 +44,30 @@ if (
   );
 }
 
+// Allow multiple origins so different Vite ports (5173, 5174, etc.) work.
+// CLIENT_URL can be a single URL or comma-separated list (e.g. "http://localhost:5173,http://localhost:5174").
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(",").map((u) => u.trim())
+  : [];
+
 const corsOptions = {
-  origin: process.env.CLIENT_URL,
+  origin(
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) {
+    // Allow requests with no origin (e.g. same-origin, Postman).
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // In development, allow any localhost origin so any Vite port works.
+    if (
+      process.env.NODE_ENV !== "production" &&
+      (origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:"))
+    ) {
+      return callback(null, true);
+    }
+    callback(null, false);
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
