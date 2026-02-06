@@ -103,8 +103,11 @@ export const getPosts = async (
 
   const totalPosts = await Post.countDocuments(query);
   const hasMore = page * limit < totalPosts;
+  const totalPages = Math.ceil(totalPosts / limit);
 
-  res.status(200).json({ posts, hasMore });
+  res
+    .status(200)
+    .json({ posts, hasMore, totalPosts, totalPages, currentPage: page });
 };
 
 export const getPostById = async (

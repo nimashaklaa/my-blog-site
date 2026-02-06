@@ -46,4 +46,7 @@ export interface Comment {
 export interface PostsResponse {
   posts: Post[];
   hasMore: boolean;
+  totalPosts: number;
+  totalPages: number;
+  currentPage: number;
 }

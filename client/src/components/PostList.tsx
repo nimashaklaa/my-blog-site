@@ -1,30 +1,42 @@
 import PostListItem from "./PostListItem";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import InfiniteScroll from "react-infinite-scroll-component";
+import Pagination from "./Pagination";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { PostsResponse } from "../types";
 import { getPosts } from "../services";
 
+const POSTS_PER_PAGE = 10;
+
 const fetchPosts = async (
-  pageParam: number,
+  page: number,
   searchParams: URLSearchParams
 ): Promise<PostsResponse> => {
   const params = Object.fromEntries([...searchParams]);
-  return getPosts({ page: pageParam, limit: 10, ...params }, null);
+  // Remove page param from searchParams since we pass it separately
+  delete params.page;
+  return getPosts({ page, limit: POSTS_PER_PAGE, ...params }, null);
 };
 
 const PostList = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
-  const { data, error, fetchNextPage, hasNextPage, isFetching } =
-    useInfiniteQuery({
-      queryKey: ["posts", searchParams.toString()],
-      queryFn: ({ pageParam = 1 }) =>
-        fetchPosts(pageParam as number, searchParams),
-      initialPageParam: 1,
-      getNextPageParam: (lastPage, pages) =>
-        lastPage.hasMore ? pages.length + 1 : undefined,
-    });
+  const { data, error, isFetching } = useQuery({
+    queryKey: ["posts", currentPage, searchParams.toString()],
+    queryFn: () => fetchPosts(currentPage, searchParams),
+  });
+
+  const handlePageChange = (page: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (page === 1) {
+      newParams.delete("page");
+    } else {
+      newParams.set("page", page.toString());
+    }
+    setSearchParams(newParams);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (isFetching && !data)
     return (
@@ -54,11 +66,22 @@ const PostList = () => {
       </div>
     );
 
-  const allPosts = data?.pages?.flatMap((page) => page.posts || []) || [];
+  const posts = data?.posts || [];
+  const hasMore = data?.hasMore ?? false;
+  const totalPosts = data?.totalPosts ?? 0;
+  const totalPages =
+    data?.totalPages ?? (hasMore ? currentPage + 1 : Math.max(1, currentPage));
 
-  const validPosts = allPosts.filter(
+  const validPosts = posts.filter(
     (post): post is NonNullable<typeof post> => post != null && post._id != null
   );
+
+  const rangeStart =
+    totalPosts === 0 ? 0 : (currentPage - 1) * POSTS_PER_PAGE + 1;
+  const rangeEnd =
+    totalPosts === 0
+      ? 0
+      : (currentPage - 1) * POSTS_PER_PAGE + validPosts.length;
 
   if (validPosts.length === 0 && !isFetching) {
     return (
@@ -85,31 +108,42 @@ const PostList = () => {
   }
 
   return (
-    <InfiniteScroll
-      dataLength={validPosts.length}
-      next={fetchNextPage}
-      hasMore={!!hasNextPage}
-      loader={
-        <div className="flex items-center justify-center py-8 gap-3">
-          <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
-          <span className="text-gray-500 text-sm">Loading more...</span>
+    <div className="w-full">
+      {/* Posts count info — use API total and actual range on this page */}
+      {totalPosts > 0 && (
+        <div className="text-sm text-gray-500 mb-4">
+          {rangeEnd >= rangeStart ? (
+            <>
+              Showing {rangeStart}-{rangeEnd} of {totalPosts} posts
+            </>
+          ) : (
+            <>Showing 0 of {totalPosts} posts</>
+          )}
         </div>
-      }
-      endMessage={
-        validPosts.length > 3 ? (
-          <div className="text-center py-8">
-            <span className="text-gray-400 text-sm">
-              You&apos;ve reached the end
-            </span>
-          </div>
-        ) : null
-      }
-      className="flex flex-col gap-2 overflow-hidden w-full max-w-full"
-    >
-      {validPosts.map((post) => (
-        <PostListItem key={post._id} post={post} />
-      ))}
-    </InfiniteScroll>
+      )}
+
+      {/* Posts list */}
+      <div className="flex flex-col gap-2 overflow-hidden w-full max-w-full">
+        {validPosts.map((post) => (
+          <PostListItem key={post._id} post={post} />
+        ))}
+      </div>
+
+      {/* Loading overlay for page transitions */}
+      {isFetching && data && (
+        <div className="flex items-center justify-center py-4 gap-2">
+          <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+          <span className="text-gray-500 text-sm">Loading...</span>
+        </div>
+      )}
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
+    </div>
   );
 };
 
