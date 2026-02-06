@@ -8,7 +8,7 @@ const Navbar = () => {
   const [postsOpen, setPostsOpen] = useState<boolean>(false);
 
   return (
-    <div className="relative w-full min-w-0 h-16 md:h-20 flex items-center justify-between">
+    <div className="relative w-full min-w-0 h-16 md:h-20 flex items-center justify-between mb-4">
       {/* LOGO */}
       <Link to="/" className="flex items-center gap-4 text-2xl font-bold">
         <Image src="logo.png" alt="Lama Logo" w={32} h={32} />
@@ -38,40 +38,23 @@ const Navbar = () => {
             ></div>
           </div>
         </div>
+        {/* Mobile Menu Overlay */}
         <div
-          className={`fixed inset-0 top-16 left-0 w-full h-[calc(100vh-4rem)] bg-[#e6e6ff] flex flex-col items-center justify-center gap-8 font-medium text-lg z-30 transition-transform duration-300 ease-in-out ${
+          className={`fixed inset-0 top-16 left-0 w-full h-[calc(100vh-4rem)] bg-white z-30 flex flex-col items-center justify-center gap-8 font-medium text-lg transition-transform duration-300 ease-in-out ${
             open ? "translate-x-0" : "translate-x-full"
           }`}
         >
           <Link to="/" onClick={() => setOpen(false)}>
             Home
           </Link>
-          <div className="flex flex-col items-center gap-4">
-            <span className="text-gray-500 text-base">Posts</span>
-            <div className="flex flex-col items-center gap-4 ">
-              <Link to="/posts" onClick={() => setOpen(false)}>
-                All posts
-              </Link>
-              <div className="flex flex-col items-center gap-4">
-                <span className="text-gray-500 text-base">Posts</span>
-                <div className="flex flex-col items-center gap-4 ">
-                  <Link to="/posts" onClick={() => setOpen(false)}>
-                    All posts
-                  </Link>
-                  <SignedIn>
-                    <Link to="/saved" onClick={() => setOpen(false)}>
-                      Saved
-                    </Link>
-                  </SignedIn>
-                </div>
-              </div>
-              <SignedIn>
-                <Link to="/saved" onClick={() => setOpen(false)}>
-                  Saved
-                </Link>
-              </SignedIn>
-            </div>
-          </div>
+          <Link to="/posts" onClick={() => setOpen(false)}>
+            All Posts
+          </Link>
+          <SignedIn>
+            <Link to="/saved" onClick={() => setOpen(false)}>
+              Saved
+            </Link>
+          </SignedIn>
           <Link to="/" onClick={() => setOpen(false)}>
             About
           </Link>
@@ -93,7 +76,7 @@ const Navbar = () => {
       <div className="hidden md:flex items-center gap-8 xl:gap-12 font-medium">
         <Link to="/">Home</Link>
         <div
-          className="relative"
+          className="relative z-[200]"
           onMouseEnter={() => setPostsOpen(true)}
           onMouseLeave={() => setPostsOpen(false)}
         >
@@ -118,8 +101,8 @@ const Navbar = () => {
             </svg>
           </button>
           {postsOpen && (
-            <div className="absolute left-0 top-full pt-1">
-              <div className="bg-white rounded-lg shadow-lg border border-gray-100 py-1 min-w-[140px]">
+            <div className="absolute left-0 top-full pt-1 z-[200]">
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px] shadow-xl">
                 <Link
                   to="/posts"
                   className="block px-4 py-2 text-sm hover:bg-gray-50 rounded-t-lg"
