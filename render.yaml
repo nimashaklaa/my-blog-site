@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: blog-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: IK_URL_ENDPOINT
+        sync: false
+      - key: IK_PUBLIC_KEY
+        sync: false
+      - key: IK_PRIVATE_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
