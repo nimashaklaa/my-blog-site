@@ -1,4 +1,4 @@
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import Comment from "./Comment";
 import ChatInput from "./ChatInput";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import { toast } from "react-toastify";
 import { Comment as CommentType } from "../types";
 import { useMemo, useState } from "react";
+import { getComments, addComment } from "../services";
 
 interface CommentsProps {
   postId: string;
@@ -15,17 +16,6 @@ interface CommentNode {
   comment: CommentType;
   replies: CommentType[];
 }
-
-const fetchComments = async (
-  postId: string,
-  token: string | null
-): Promise<CommentType[]> => {
-  const res = await axios.get(
-    `${import.meta.env.VITE_API_URL}/comments/${postId}`,
-    token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-  );
-  return res.data;
-};
 
 function buildCommentTree(comments: CommentType[]): CommentNode[] {
   const topLevel: CommentType[] = [];
@@ -68,7 +58,7 @@ const Comments = ({ postId }: CommentsProps) => {
     queryKey: ["comments", postId, !!user],
     queryFn: async () => {
       const token = await getToken();
-      return fetchComments(postId, token ?? null);
+      return getComments(postId, token ?? null);
     },
   });
 
@@ -80,15 +70,8 @@ const Comments = ({ postId }: CommentsProps) => {
       parentComment?: string | null;
     }) => {
       const token = await getToken();
-      return axios.post(
-        `${import.meta.env.VITE_API_URL}/comments/${postId}`,
-        newComment,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      if (!token) throw new Error("Not authenticated");
+      return addComment(postId, newComment, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });

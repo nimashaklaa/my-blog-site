@@ -1,15 +1,12 @@
 import { Link } from "react-router-dom";
 import Image from "./Image";
-import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { PostsResponse } from "../types";
 import { getCategoryLabel } from "../constants/categories";
+import { getPosts } from "../services";
 
 const fetchFeatured = async (): Promise<PostsResponse> => {
-  const res = await axios.get(
-    `${import.meta.env.VITE_API_URL}/posts?featured=true&limit=4&sort=newest`
-  );
-  return res.data;
+  return getPosts({ featured: true, limit: 4, sort: "newest" }, null);
 };
 
 function getReadTimeMinutes(html: string): number {

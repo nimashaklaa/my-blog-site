@@ -4,8 +4,9 @@ import ChatInput from "./ChatInput";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import { Comment as CommentType, CommentReactionType } from "../types";
+import { deleteComment, reactToComment } from "../services";
 
 const REACTIONS: { type: CommentReactionType; label: string; emoji: string }[] =
   [
@@ -49,14 +50,8 @@ const Comment = ({
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return axios.delete(
-        `${import.meta.env.VITE_API_URL}/comments/${comment._id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      if (!token) throw new Error("Not authenticated");
+      return deleteComment(comment._id, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
@@ -78,15 +73,8 @@ const Comment = ({
   const reactMutation = useMutation({
     mutationFn: async (type: CommentReactionType) => {
       const token = await getToken();
-      const res = await axios.patch<{
-        reactionCounts: Record<CommentReactionType, number>;
-        myReaction: CommentReactionType | null;
-      }>(
-        `${import.meta.env.VITE_API_URL}/comments/${comment._id}/react`,
-        { type },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      return res.data;
+      if (!token) throw new Error("Not authenticated");
+      return reactToComment(comment._id, type, token);
     },
     onSuccess: (data) => {
       queryClient.setQueryData<CommentType[]>(["comments", postId], (old) =>

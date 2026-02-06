@@ -1,31 +1,27 @@
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import { useCallback, useEffect, useState, useRef, FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Upload from "../components/Upload";
 import Image from "../components/Image";
 import Editor from "../components/Editor";
-import { Post } from "../types";
 import { CATEGORIES } from "../constants/categories";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import {
+  getPost,
+  createPost,
+  updatePost,
+  getDrafts,
+  getDraft,
+  createDraft,
+  updateDraft,
+  deleteDraft,
+} from "../services";
 
 interface UploadData {
   filePath?: string;
   url?: string;
-}
-
-interface DraftRecord {
-  _id: string;
-  title: string;
-  category: string;
-  tags?: string[];
-  desc: string;
-  content: string;
-  img?: string;
-  updatedAt: string;
 }
 
 const MAX_TAGS = 5;
@@ -60,16 +56,15 @@ const Write = () => {
 
   const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
 
-  const authHeaders = async () => ({
-    Authorization: `Bearer ${await getTokenRef.current()}`,
-  });
+  const getTokenForRequest = async () => {
+    const t = await getTokenRef.current();
+    if (!t) throw new Error("Not authenticated");
+    return t;
+  };
 
   const { data: editPost, isLoading: editPostLoading } = useQuery({
     queryKey: ["post", editSlug],
-    queryFn: async () => {
-      const res = await axios.get<Post>(`${API_URL}/posts/${editSlug}`);
-      return res.data;
-    },
+    queryFn: () => getPost(editSlug!, null),
     enabled: isEditMode,
   });
 
@@ -94,10 +89,8 @@ const Write = () => {
   const { data: drafts = [], isLoading: draftsLoading } = useQuery({
     queryKey: ["drafts"],
     queryFn: async () => {
-      const res = await axios.get<DraftRecord[]>(`${API_URL}/drafts`, {
-        headers: await authHeaders(),
-      });
-      return res.data;
+      const token = await getTokenForRequest();
+      return getDrafts(token);
     },
     enabled: isLoaded && isSignedIn && isAdmin,
   });
@@ -106,13 +99,8 @@ const Write = () => {
     queryKey: ["draft", selectedDraftId],
     queryFn: async () => {
       if (!selectedDraftId) return null;
-      const res = await axios.get<DraftRecord>(
-        `${API_URL}/drafts/${selectedDraftId}`,
-        {
-          headers: await authHeaders(),
-        }
-      );
-      return res.data;
+      const token = await getTokenForRequest();
+      return getDraft(selectedDraftId, token);
     },
     enabled: isLoaded && isSignedIn && isAdmin && !!selectedDraftId,
   });
@@ -194,19 +182,13 @@ const Write = () => {
         img: cover.filePath || "",
       };
       try {
+        const token = await getTokenRef.current();
+        if (!token) return;
         if (selectedDraftId) {
-          await axios.put(`${API_URL}/drafts/${selectedDraftId}`, payload, {
-            headers: await authHeaders(),
-          });
+          await updateDraft(selectedDraftId, payload, token);
         } else if (hasContentToSave) {
-          const res = await axios.post<DraftRecord>(
-            `${API_URL}/drafts`,
-            payload,
-            {
-              headers: await authHeaders(),
-            }
-          );
-          setSelectedDraftId(res.data._id);
+          const created = await createDraft(payload, token);
+          setSelectedDraftId(created._id);
         }
         if (selectedDraftId || hasContentToSave) {
           queryClient.invalidateQueries({ queryKey: ["drafts"] });
@@ -240,24 +222,21 @@ const Write = () => {
       desc: string;
       content: string;
     }) => {
-      const token = await getTokenRef.current();
-      return axios.post(`${API_URL}/posts`, newPost, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const token = await getTokenForRequest();
+      return createPost(newPost, token);
     },
-    onSuccess: async (res) => {
+    onSuccess: async (created) => {
       if (selectedDraftId) {
         try {
-          await axios.delete(`${API_URL}/drafts/${selectedDraftId}`, {
-            headers: await authHeaders(),
-          });
+          const token = await getTokenForRequest();
+          await deleteDraft(selectedDraftId, token);
           queryClient.invalidateQueries({ queryKey: ["drafts"] });
         } catch {
           // ignore
         }
       }
       toast.success("Post has been created");
-      navigate(`/${res.data.slug}`);
+      navigate(`/${created.slug}`);
     },
     onError: (error: unknown) => {
       const axiosError = error as AxiosError<
@@ -286,10 +265,9 @@ const Write = () => {
       desc: string;
       content: string;
     }) => {
-      const token = await getTokenRef.current();
-      return axios.put(`${API_URL}/posts/${editPost?._id}`, updatedPost, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const token = await getTokenForRequest();
+      if (!editPost?._id) throw new Error("No post to update");
+      return updatePost(editPost._id, updatedPost, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["post", editSlug] });
@@ -316,9 +294,8 @@ const Write = () => {
 
   const deleteDraftMutation = useMutation({
     mutationFn: async (id: string) => {
-      await axios.delete(`${API_URL}/drafts/${id}`, {
-        headers: await authHeaders(),
-      });
+      const token = await getTokenForRequest();
+      await deleteDraft(id, token);
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["drafts"] });

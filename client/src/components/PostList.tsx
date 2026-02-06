@@ -1,20 +1,16 @@
 import PostListItem from "./PostListItem";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import axios from "axios";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { useSearchParams } from "react-router-dom";
 import { PostsResponse } from "../types";
+import { getPosts } from "../services";
 
 const fetchPosts = async (
   pageParam: number,
   searchParams: URLSearchParams
 ): Promise<PostsResponse> => {
-  const searchParamsObj = Object.fromEntries([...searchParams]);
-
-  const res = await axios.get(`${import.meta.env.VITE_API_URL}/posts`, {
-    params: { page: pageParam, limit: 10, ...searchParamsObj },
-  });
-  return res.data;
+  const params = Object.fromEntries([...searchParams]);
+  return getPosts({ page: pageParam, limit: 10, ...params }, null);
 };
 
 const PostList = () => {

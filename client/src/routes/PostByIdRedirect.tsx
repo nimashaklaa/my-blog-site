@@ -1,14 +1,6 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import { Post } from "../types";
-
-const API_URL = import.meta.env.VITE_API_URL;
-
-const fetchPostById = async (id: string): Promise<Post> => {
-  const res = await axios.get(`${API_URL}/posts/id/${id}`);
-  return res.data;
-};
+import { getPostById } from "../services";
 
 /** Fetches post by id and redirects to canonical URL by slug. */
 const PostByIdRedirect = () => {
@@ -16,7 +8,7 @@ const PostByIdRedirect = () => {
 
   const { data, isPending, error } = useQuery({
     queryKey: ["postById", id],
-    queryFn: () => fetchPostById(id!),
+    queryFn: () => getPostById(id!, null),
     enabled: !!id,
   });
 

@@ -11,22 +11,11 @@ import Image from "../components/Image";
 import PostMenuActions from "../components/PostMenuActions";
 import Comments from "../components/Comments";
 import PostContent from "../components/PostContent";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Post, Comment } from "../types";
+import { Post } from "../types";
 import { toast } from "react-toastify";
-
-const API_URL = import.meta.env.VITE_API_URL;
-
-const fetchPost = async (slug: string): Promise<Post> => {
-  const res = await axios.get(`${API_URL}/posts/${slug}`);
-  return res.data;
-};
-
-const fetchComments = async (postId: string): Promise<Comment[]> => {
-  const res = await axios.get(`${API_URL}/comments/${postId}`);
-  return res.data;
-};
+import { getPost, toggleClap, getComments } from "../services";
 
 interface BlockContent {
   type?: string;
@@ -267,13 +256,16 @@ const SinglePostPage = () => {
 
   const { isPending, error, data } = useQuery({
     queryKey: ["post", slug],
-    queryFn: () => fetchPost(slug!),
+    queryFn: () => getPost(slug!, null),
     enabled: isValidSlug(slug),
   });
 
   const { data: comments = [] } = useQuery({
     queryKey: ["comments", data?._id],
-    queryFn: () => fetchComments(data!._id),
+    queryFn: async () => {
+      const token = await getToken();
+      return getComments(data!._id, token ?? null);
+    },
     enabled: !!data?._id,
   });
 
@@ -364,15 +356,8 @@ const SinglePostPage = () => {
         return;
       }
       const token = await getToken();
-      return axios.patch(
-        `${import.meta.env.VITE_API_URL}/posts/clap/${data!._id}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      if (!token) throw new Error("Not authenticated");
+      return toggleClap(data!._id, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["post", slug] });

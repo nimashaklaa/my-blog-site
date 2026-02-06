@@ -1,9 +1,15 @@
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Post } from "../types";
+import {
+  getSavedPosts,
+  deletePost,
+  toggleSavePost,
+  featurePost,
+} from "../services";
 
 interface PostMenuActionsProps {
   post: Post;
@@ -23,26 +29,20 @@ const PostMenuActions = ({ post, onAction }: PostMenuActionsProps) => {
     queryKey: ["savedPosts"],
     queryFn: async () => {
       const token = await getToken();
-      return axios.get<Post[]>(`${import.meta.env.VITE_API_URL}/users/saved`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      if (!token) throw new Error("Not authenticated");
+      return getSavedPosts(token);
     },
     enabled: !!user,
   });
 
   const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
-  const isSaved = savedPosts?.data?.some((p) => p._id === post._id) || false;
+  const isSaved = savedPosts?.some((p) => p._id === post._id) || false;
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return axios.delete(`${import.meta.env.VITE_API_URL}/posts/${post._id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      if (!token) throw new Error("Not authenticated");
+      await deletePost(post._id, token);
     },
     onSuccess: () => {
       toast.success("Post deleted successfully!");
@@ -66,17 +66,8 @@ const PostMenuActions = ({ post, onAction }: PostMenuActionsProps) => {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return axios.patch(
-        `${import.meta.env.VITE_API_URL}/users/save`,
-        {
-          postId: post._id,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      if (!token) throw new Error("Not authenticated");
+      return toggleSavePost(post._id, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
@@ -97,17 +88,8 @@ const PostMenuActions = ({ post, onAction }: PostMenuActionsProps) => {
   const featureMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return axios.patch(
-        `${import.meta.env.VITE_API_URL}/posts/feature`,
-        {
-          postId: post._id,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      if (!token) throw new Error("Not authenticated");
+      return featurePost(post._id, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["post", post.slug] });

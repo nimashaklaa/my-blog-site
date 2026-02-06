@@ -1,16 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import PostListItem from "../components/PostListItem";
-import { Post } from "../types";
-
-const fetchSavedPosts = async (token: string): Promise<Post[]> => {
-  const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/saved`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return res.data;
-};
+import { getSavedPosts } from "../services";
 
 const SavedPosts = () => {
   const { getToken, isSignedIn } = useAuth();
@@ -20,7 +12,7 @@ const SavedPosts = () => {
     queryFn: async () => {
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
-      return fetchSavedPosts(token);
+      return getSavedPosts(token);
     },
     enabled: isSignedIn,
   });

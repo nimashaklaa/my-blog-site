@@ -13,7 +13,6 @@ interface EditorProps {
 }
 
 async function uploadFile(file: File): Promise<string> {
-  const apiUrl = import.meta.env.VITE_API_URL;
   const publicKey = import.meta.env.VITE_IK_PUBLIC_KEY;
   if (!publicKey) {
     throw new Error(
@@ -21,12 +20,8 @@ async function uploadFile(file: File): Promise<string> {
     );
   }
 
-  // 1. Get auth credentials from the existing endpoint
-  const authRes = await fetch(`${apiUrl}/posts/upload-auth`);
-  if (!authRes.ok) {
-    throw new Error("Failed to get upload auth credentials");
-  }
-  const { signature, expire, token } = await authRes.json();
+  const { getUploadAuth } = await import("../services");
+  const { signature, expire, token } = await getUploadAuth();
 
   // 2. Upload file to ImageKit
   const formData = new FormData();
