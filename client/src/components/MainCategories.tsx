@@ -1,51 +1,46 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Search from "./Search";
+import { CATEGORIES } from "../constants/categories";
 
 const MainCategories = () => {
+  const [searchParams] = useSearchParams();
+  const currentCat = searchParams.get("cat");
+
   return (
-    <div className="hidden md:flex bg-white rounded-3xl xl:rounded-full p-4 shadow-lg items-center justify-center gap-8">
-      {/* links */}
-      <div className="flex-1 flex items-center justify-between flex-wrap">
-        <Link
-          to="/posts"
-          className="bg-blue-800 text-white rounded-full px-4 py-2"
-        >
-          All Posts
-        </Link>
-        <Link
-          to="/posts?cat=web-design"
-          className="hover:bg-blue-50 rounded-full px-4 py-2"
-        >
-          Web Design
-        </Link>
-        <Link
-          to="/posts?cat=development"
-          className="hover:bg-blue-50 rounded-full px-4 py-2"
-        >
-          Development
-        </Link>
-        <Link
-          to="/posts?cat=databases"
-          className="hover:bg-blue-50 rounded-full px-4 py-2"
-        >
-          Databases
-        </Link>
-        <Link
-          to="/posts?cat=seo"
-          className="hover:bg-blue-50 rounded-full px-4 py-2"
-        >
-          Search Engines
-        </Link>
-        <Link
-          to="/posts?cat=marketing"
-          className="hover:bg-blue-50 rounded-full px-4 py-2"
-        >
-          Marketing
-        </Link>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full min-w-0 overflow-hidden">
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
+          <Link
+            to="/posts"
+            className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+              !currentCat
+                ? "bg-gray-900 text-white shadow-md"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+            }`}
+          >
+            All
+          </Link>
+          {CATEGORIES.map(({ value, label }) => {
+            const isActive = currentCat === value;
+            return (
+              <Link
+                key={value}
+                to={`/posts?cat=${value}`}
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                  isActive
+                    ? "bg-gray-900 text-white shadow-md"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
-      <span className="text-xl font-medium">|</span>
-      {/* search */}
-      <Search />
+      <div className="shrink-0 w-full sm:w-auto sm:min-w-[200px]">
+        <Search />
+      </div>
     </div>
   );
 };

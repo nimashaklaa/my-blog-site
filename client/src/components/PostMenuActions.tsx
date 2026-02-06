@@ -23,20 +23,17 @@ const PostMenuActions = ({ post, onAction }: PostMenuActionsProps) => {
     queryKey: ["savedPosts"],
     queryFn: async () => {
       const token = await getToken();
-      return axios.get<string[]>(
-        `${import.meta.env.VITE_API_URL}/users/saved`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      return axios.get<Post[]>(`${import.meta.env.VITE_API_URL}/users/saved`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
     },
     enabled: !!user,
   });
 
   const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
-  const isSaved = savedPosts?.data?.some((p) => p === post._id) || false;
+  const isSaved = savedPosts?.data?.some((p) => p._id === post._id) || false;
 
   const deleteMutation = useMutation({
     mutationFn: async () => {

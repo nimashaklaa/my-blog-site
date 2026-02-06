@@ -8,6 +8,8 @@ import Write from "./routes/Write";
 import LoginPage from "./routes/LoginPage";
 import RegisterPage from "./routes/RegisterPage";
 import SinglePostPage from "./routes/SinglePostPage";
+import PostByIdRedirect from "./routes/PostByIdRedirect";
+import SavedPosts from "./routes/SavedPosts";
 import MainLayout from "./layouts/MainLayout";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -35,6 +37,10 @@ const router = createBrowserRouter([
         element: <PostListPage />,
       },
       {
+        path: "/p/:id",
+        element: <PostByIdRedirect />,
+      },
+      {
         path: "/:slug",
         element: <SinglePostPage />,
       },
@@ -45,6 +51,10 @@ const router = createBrowserRouter([
       {
         path: "/edit/:slug",
         element: <Write />,
+      },
+      {
+        path: "/saved",
+        element: <SavedPosts />,
       },
       {
         path: "/login",

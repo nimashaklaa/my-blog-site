@@ -7,6 +7,7 @@ export interface IPost extends Document {
   slug: string;
   desc?: string;
   category: string;
+  tags: string[];
   content: string;
   isFeatured: boolean;
   visit: number;
@@ -40,6 +41,10 @@ const postSchema = new Schema<IPost>(
     category: {
       type: String,
       default: "general",
+    },
+    tags: {
+      type: [String],
+      default: [],
     },
     content: {
       type: String,

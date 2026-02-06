@@ -1,13 +1,14 @@
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
-import { useEffect, useState, useRef, FormEvent } from "react";
+import { useCallback, useEffect, useState, useRef, FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Upload from "../components/Upload";
 import Image from "../components/Image";
 import Editor from "../components/Editor";
 import { Post } from "../types";
+import { CATEGORIES } from "../constants/categories";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -20,11 +21,14 @@ interface DraftRecord {
   _id: string;
   title: string;
   category: string;
+  tags?: string[];
   desc: string;
   content: string;
   img?: string;
   updatedAt: string;
 }
+
+const MAX_TAGS = 5;
 
 const Write = () => {
   const { getToken } = useAuth();
@@ -39,12 +43,18 @@ const Write = () => {
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("general");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const [desc, setDesc] = useState("");
   const [value, setValue] = useState("");
   const [cover, setCover] = useState<UploadData>({});
   const [progress, setProgress] = useState(0);
   const [editorKey, setEditorKey] = useState(0);
   const [initialEditorContent, setInitialEditorContent] = useState("");
+  const [coverPosition, setCoverPosition] = useState({ x: 50, y: 50 });
+  const [isDraggingCover, setIsDraggingCover] = useState(false);
+  const coverRef = useRef<HTMLDivElement>(null);
+  const lastPointerRef = useRef({ x: 0, y: 0 });
   const lastSyncedDraftIdRef = useRef<string | null>(null);
   const editPostLoadedRef = useRef<string | null>(null);
 
@@ -72,6 +82,7 @@ const Write = () => {
       editPostLoadedRef.current = editSlug!;
       setTitle(editPost.title);
       setCategory(editPost.category || "general");
+      setTags(editPost.tags ?? []);
       setDesc(editPost.desc || "");
       setValue(editPost.content || "");
       setInitialEditorContent(editPost.content || "");
@@ -119,6 +130,7 @@ const Write = () => {
       lastSyncedDraftIdRef.current = currentDraft._id;
       setTitle(currentDraft.title);
       setCategory(currentDraft.category || "general");
+      setTags(currentDraft.tags ?? []);
       setDesc(currentDraft.desc || "");
       setValue(currentDraft.content || "");
       setInitialEditorContent(currentDraft.content || "");
@@ -126,6 +138,42 @@ const Write = () => {
       setEditorKey((k) => k + 1);
     }
   }, [currentDraft, selectedDraftId]);
+
+  // Reset cover position when cover image changes
+  useEffect(() => {
+    setCoverPosition({ x: 50, y: 50 });
+  }, [cover.url, cover.filePath]);
+
+  const handleCoverPointerDown = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    e.preventDefault();
+    lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    setIsDraggingCover(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDraggingCover) return;
+    const onMove = (e: PointerEvent) => {
+      if (!coverRef.current) return;
+      const rect = coverRef.current.getBoundingClientRect();
+      const deltaX = e.clientX - lastPointerRef.current.x;
+      const deltaY = e.clientY - lastPointerRef.current.y;
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+      setCoverPosition((prev) => ({
+        x: Math.min(100, Math.max(0, prev.x - (deltaX / rect.width) * 100)),
+        y: Math.min(100, Math.max(0, prev.y - (deltaY / rect.height) * 100)),
+      }));
+    };
+    const onUp = () => setIsDraggingCover(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [isDraggingCover]);
 
   const hasContentToSave = !!(
     title.trim() ||
@@ -140,6 +188,7 @@ const Write = () => {
       const payload = {
         title,
         category,
+        tags: tags.slice(0, MAX_TAGS),
         desc,
         content: value,
         img: cover.filePath || "",
@@ -173,6 +222,7 @@ const Write = () => {
     isAdmin,
     title,
     category,
+    tags,
     desc,
     value,
     cover.filePath,
@@ -186,6 +236,7 @@ const Write = () => {
       img: string;
       title: string;
       category: string;
+      tags: string[];
       desc: string;
       content: string;
     }) => {
@@ -231,6 +282,7 @@ const Write = () => {
       img: string;
       title: string;
       category: string;
+      tags: string[];
       desc: string;
       content: string;
     }) => {
@@ -274,6 +326,7 @@ const Write = () => {
         setSelectedDraftId(null);
         setTitle("");
         setCategory("general");
+        setTags([]);
         setDesc("");
         setValue("");
         setInitialEditorContent("");
@@ -301,11 +354,27 @@ const Write = () => {
     setSelectedDraftId(null);
     setTitle("");
     setCategory("general");
+    setTags([]);
     setDesc("");
     setValue("");
     setInitialEditorContent("");
     setCover({});
     setEditorKey((k) => k + 1);
+  };
+
+  const addTag = () => {
+    const t = tagInput.trim();
+    if (!t || tags.length >= MAX_TAGS) return;
+    if (tags.includes(t)) {
+      setTagInput("");
+      return;
+    }
+    setTags((prev) => [...prev, t].slice(0, MAX_TAGS));
+    setTagInput("");
+  };
+
+  const removeTag = (index: number) => {
+    setTags((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSelectDraft = (id: string) => {
@@ -318,6 +387,7 @@ const Write = () => {
       img: cover.filePath || "",
       title: title.trim(),
       category,
+      tags: tags.slice(0, MAX_TAGS),
       desc: desc.trim(),
       content: value,
     };
@@ -384,20 +454,35 @@ const Write = () => {
       <form onSubmit={handleSubmit} className="flex flex-col gap-6 flex-1 mb-6">
         <div className="flex flex-col gap-2">
           {cover.url || cover.filePath ? (
-            <div className="relative rounded-xl overflow-hidden bg-gray-100 max-h-64 w-full">
-              <Image
-                src={cover.url || cover.filePath || ""}
-                alt="Cover preview"
-                className="w-full h-full object-cover max-h-64"
-              />
+            <div
+              ref={coverRef}
+              className={`relative w-full h-64 min-h-48 rounded-xl overflow-hidden bg-gray-100 select-none ${
+                isDraggingCover ? "cursor-grabbing" : "cursor-grab"
+              }`}
+              onPointerDown={handleCoverPointerDown}
+              style={{ touchAction: "none" }}
+            >
+              <div className="absolute inset-0 pointer-events-none">
+                <Image
+                  src={cover.url || cover.filePath || ""}
+                  alt="Cover preview"
+                  className="w-full h-full object-cover"
+                  style={{
+                    objectPosition: `${coverPosition.x}% ${coverPosition.y}%`,
+                  }}
+                />
+              </div>
               <Upload type="image" setProgress={setProgress} setData={setCover}>
                 <button
                   type="button"
-                  className="absolute bottom-2 right-2 p-2 shadow-md rounded-lg text-sm text-gray-600 bg-white/90 hover:bg-white"
+                  className="absolute bottom-2 right-2 z-10 p-2 shadow-md rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-200"
                 >
                   Change cover
                 </button>
               </Upload>
+              <span className="sr-only">
+                Drag to adjust which part of the image is visible
+              </span>
             </div>
           ) : (
             <Upload type="image" setProgress={setProgress} setData={setCover}>
@@ -417,23 +502,73 @@ const Write = () => {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-        <div className="flex items-center gap-4">
-          <label htmlFor="category" className="text-sm">
-            Choose a category:
-          </label>
-          <select
-            id="category"
-            className="p-2 rounded-xl bg-white shadow-md"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="general">General</option>
-            <option value="web-design">Web Design</option>
-            <option value="development">Development</option>
-            <option value="databases">Databases</option>
-            <option value="seo">Search Engines</option>
-            <option value="marketing">Marketing</option>
-          </select>
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2">
+            <label htmlFor="category" className="text-sm shrink-0">
+              Category
+            </label>
+            <select
+              id="category"
+              className="p-2 rounded-xl bg-white shadow-md"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {CATEGORIES.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <label htmlFor="tags" className="text-sm shrink-0">
+              Tags (max {MAX_TAGS})
+            </label>
+            <div className="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-white shadow-md border border-gray-200 min-h-[42px] flex-1 min-w-[140px]">
+              {tags.map((t, i) => (
+                <span
+                  key={`${t}-${i}`}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 text-gray-800 text-sm"
+                >
+                  {t}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(i)}
+                    className="text-gray-500 hover:text-red-600 rounded-full p-0.5"
+                    aria-label={`Remove ${t}`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="w-3.5 h-3.5"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </span>
+              ))}
+              {tags.length < MAX_TAGS && (
+                <input
+                  id="tags"
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                  placeholder="Type a tag and press Enter"
+                  className="flex-1 min-w-[120px] bg-transparent outline-none text-sm"
+                />
+              )}
+            </div>
+          </div>
         </div>
         <textarea
           className="p-4 rounded-xl bg-white shadow-md"

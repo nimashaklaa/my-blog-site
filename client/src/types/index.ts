@@ -12,6 +12,7 @@ export interface Post {
   slug: string;
   desc?: string;
   category: string;
+  tags?: string[];
   content: string;
   isFeatured: boolean;
   visit: number;

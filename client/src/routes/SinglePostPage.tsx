@@ -1,6 +1,12 @@
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Image from "../components/Image";
 import PostMenuActions from "../components/PostMenuActions";
 import Comments from "../components/Comments";
@@ -250,6 +256,9 @@ function downloadPostAsMarkdown(post: Post): void {
   URL.revokeObjectURL(url);
 }
 
+const isValidSlug = (s: string | undefined): s is string =>
+  !!s && s !== "undefined" && s.trim() !== "";
+
 const SinglePostPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useUser();
@@ -259,7 +268,7 @@ const SinglePostPage = () => {
   const { isPending, error, data } = useQuery({
     queryKey: ["post", slug],
     queryFn: () => fetchPost(slug!),
-    enabled: !!slug,
+    enabled: isValidSlug(slug),
   });
 
   const { data: comments = [] } = useQuery({
@@ -271,6 +280,10 @@ const SinglePostPage = () => {
   const [moreOpen, setMoreOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [coverPosition, setCoverPosition] = useState({ x: 50, y: 50 });
+  const [isDraggingCover, setIsDraggingCover] = useState(false);
+  const coverRef = useRef<HTMLDivElement>(null);
+  const lastPointerRef = useRef({ x: 0, y: 0 });
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const hasClapped = data?.hasClapped || false;
   const readTime = data ? getReadTimeMinutes(data.content) : 0;
@@ -425,20 +438,85 @@ const SinglePostPage = () => {
 
   const clapCount = data?.clapCount ?? data?.claps?.length ?? 0;
 
+  // Reset cover position when post changes
+  useEffect(() => {
+    setCoverPosition({ x: 50, y: 50 });
+  }, [slug]);
+
+  const handleCoverPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!data?.img) return;
+      e.preventDefault();
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+      setIsDraggingCover(true);
+    },
+    [data?.img]
+  );
+
+  // Global pointer move/up so dragging works when pointer leaves the cover
+  useEffect(() => {
+    if (!isDraggingCover) return;
+    const onMove = (e: PointerEvent) => {
+      if (!coverRef.current) return;
+      const rect = coverRef.current.getBoundingClientRect();
+      const deltaX = e.clientX - lastPointerRef.current.x;
+      const deltaY = e.clientY - lastPointerRef.current.y;
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+      setCoverPosition((prev) => ({
+        x: Math.min(100, Math.max(0, prev.x - (deltaX / rect.width) * 100)),
+        y: Math.min(100, Math.max(0, prev.y - (deltaY / rect.height) * 100)),
+      }));
+    };
+    const onUp = () => setIsDraggingCover(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [isDraggingCover]);
+
+  if (!isValidSlug(slug)) {
+    return (
+      <div className="max-w-4xl mx-auto py-16 text-center">
+        <p className="text-gray-600 mb-4">Post not found.</p>
+        <Link to="/posts" className="text-blue-600 hover:underline">
+          Back to posts
+        </Link>
+      </div>
+    );
+  }
   if (isPending) return <div>Loading...</div>;
   if (error) return <div>Something went wrong! {error.message}</div>;
   if (!data) return <div>Post not found!</div>;
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8 max-w-4xl mx-auto w-full min-w-0 px-1 sm:px-0 box-border">
-      {/* Cover image */}
+      {/* Cover image — drag to reposition */}
       {data.img && (
-        <div className="w-full rounded-xl overflow-hidden bg-gray-100 max-h-64">
-          <Image
-            src={data.img}
-            alt=""
-            className="w-full h-full object-cover max-h-64"
-          />
+        <div
+          ref={coverRef}
+          role="img"
+          aria-label="Cover image"
+          className={`relative w-full h-64 min-h-48 rounded-xl overflow-hidden bg-gray-100 select-none ${
+            isDraggingCover ? "cursor-grabbing" : "cursor-grab"
+          }`}
+          onPointerDown={handleCoverPointerDown}
+          style={{ touchAction: "none" }}
+        >
+          <div className="absolute inset-0 pointer-events-none">
+            <Image
+              src={data.img}
+              alt=""
+              className="w-full h-full object-cover"
+              style={{
+                objectPosition: `${coverPosition.x}% ${coverPosition.y}%`,
+              }}
+            />
+          </div>
+          <span className="sr-only">Drag to adjust cover position</span>
         </div>
       )}
 
@@ -453,6 +531,20 @@ const SinglePostPage = () => {
         <span aria-hidden>·</span>
         <span>{readTime} min read</span>
         <span aria-hidden>·</span>
+        {data.tags && data.tags.length > 0 && (
+          <>
+            {data.tags.map((tag) => (
+              <Link
+                key={tag}
+                to={`/posts?tag=${encodeURIComponent(tag)}`}
+                className="text-blue-600 hover:underline"
+              >
+                #{tag}
+              </Link>
+            ))}
+            <span aria-hidden>·</span>
+          </>
+        )}
         <button
           type="button"
           onClick={handleListen}

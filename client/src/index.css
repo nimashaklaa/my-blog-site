@@ -2,11 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+html {
+  overflow-x: hidden !important;
+}
+
 body {
-  background-color: #e6e6ff;
-  width: 100vw;
-  overflow-x: hidden;
+  background-color: white;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
   font-family: "Montserrat", sans-serif;
+}
+
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
 }
 
 .animatedButton {

@@ -9,10 +9,21 @@ interface PostQuery {
   page?: string;
   limit?: string;
   cat?: string;
+  tag?: string;
   author?: string;
   search?: string;
   sort?: string;
   featured?: string;
+}
+
+const MAX_TAGS = 5;
+
+function normalizeTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map((t) => String(t).trim()).filter(Boolean))].slice(
+    0,
+    MAX_TAGS
+  );
 }
 
 export const getPosts = async (
@@ -27,6 +38,7 @@ export const getPosts = async (
   console.log(req.query);
 
   const cat = req.query.cat;
+  const tag = req.query.tag;
   const author = req.query.author;
   const searchQuery = req.query.search;
   const sortQuery = req.query.sort;
@@ -34,6 +46,10 @@ export const getPosts = async (
 
   if (cat) {
     query.category = cat;
+  }
+
+  if (tag) {
+    query.tags = tag;
   }
 
   if (searchQuery) {
@@ -85,10 +101,47 @@ export const getPosts = async (
     .limit(limit)
     .skip((page - 1) * limit);
 
-  const totalPosts = await Post.countDocuments();
+  const totalPosts = await Post.countDocuments(query);
   const hasMore = page * limit < totalPosts;
 
   res.status(200).json({ posts, hasMore });
+};
+
+export const getPostById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { id } = req.params;
+  const post = await Post.findById(id).populate("user", "username img");
+
+  if (!post) {
+    res.status(404).json("Post not found!");
+    return;
+  }
+
+  const postData = post.toObject();
+  const clapsAsStrings = post.claps.map((clapId) => clapId.toString());
+
+  let hasClapped = false;
+  const clerkUserId = req.auth?.userId;
+  if (clerkUserId) {
+    const user = await User.findOne({ clerkUserId });
+    if (user && user._id) {
+      const userId = user._id as Types.ObjectId;
+      hasClapped = post.claps.some(
+        (clapUserId) => clapUserId.toString() === userId.toString()
+      );
+    }
+  }
+
+  const response = {
+    ...postData,
+    claps: clapsAsStrings,
+    clapCount: clapsAsStrings.length,
+    hasClapped,
+  };
+
+  res.status(200).json(response);
 };
 
 export const getPost = async (req: Request, res: Response): Promise<void> => {
@@ -214,6 +267,7 @@ export const createPost = async (
       slug,
       title: req.body.title.trim(),
       category: req.body.category || "general",
+      tags: normalizeTags(req.body.tags),
       desc: req.body.desc?.trim() || "",
       content: req.body.content.trim(),
       img: req.body.img || "",
@@ -336,6 +390,7 @@ export const updatePost = async (
 
   post.title = req.body.title.trim();
   post.category = req.body.category || "general";
+  post.tags = normalizeTags(req.body.tags);
   post.desc = req.body.desc?.trim() || "";
   post.content = req.body.content.trim();
   post.img = req.body.img || "";

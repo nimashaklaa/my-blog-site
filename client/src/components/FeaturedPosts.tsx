@@ -2,176 +2,157 @@ import { Link } from "react-router-dom";
 import Image from "./Image";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "timeago.js";
 import { PostsResponse } from "../types";
+import { getCategoryLabel } from "../constants/categories";
 
-const fetchPost = async (): Promise<PostsResponse> => {
+const fetchFeatured = async (): Promise<PostsResponse> => {
   const res = await axios.get(
     `${import.meta.env.VITE_API_URL}/posts?featured=true&limit=4&sort=newest`
   );
   return res.data;
 };
 
+function getReadTimeMinutes(html: string): number {
+  const text = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 200));
+}
+
+function formatDate(createdAt: string): string {
+  return new Date(createdAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 const FeaturedPosts = () => {
   const { isPending, error, data } = useQuery({
     queryKey: ["featuredPosts"],
-    queryFn: () => fetchPost(),
+    queryFn: fetchFeatured,
   });
 
-  if (isPending) return <div>loading...</div>;
-  if (error) return <div>Something went wrong! {error.message}</div>;
+  if (isPending) return <div className="text-gray-500 text-sm">Loading...</div>;
+  if (error)
+    return <div className="text-red-600 text-sm">Something went wrong.</div>;
 
   const posts = data?.posts;
-  if (!posts || posts.length === 0) {
-    return null;
-  }
+  if (!posts || posts.length === 0) return null;
+
+  const [featured, ...rest] = posts;
 
   return (
-    <div className="mt-8 flex flex-col lg:flex-row gap-8">
-      {/* First */}
-      <div className="w-full lg:w-1/2 flex flex-col gap-4">
-        {/* image */}
-        {posts[0].img && (
-          <Image
-            src={posts[0].img}
-            className="rounded-3xl object-cover"
-            w={895}
-          />
-        )}
-        {/* details */}
-        <div className="flex items-center gap-4">
-          <h1 className="font-semibold lg:text-lg">01.</h1>
-          <Link
-            to={`/posts?cat=${posts[0].category}`}
-            className="text-blue-800 lg:text-lg"
-          >
-            {posts[0].category}
-          </Link>
-          <span className="text-gray-500">{format(posts[0].createdAt)}</span>
-        </div>
-        {/* title */}
+    <section>
+      <div className="flex items-center gap-3 mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Featured</h2>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Main featured — overlay card */}
         <Link
-          to={posts[0].slug}
-          className="text-xl lg:text-3xl font-semibold lg:font-bold"
+          to={`/${featured.slug}`}
+          className="group relative w-full lg:w-3/5 rounded-2xl overflow-hidden bg-gray-900 aspect-[4/3] lg:aspect-[16/10]"
         >
-          {posts[0].title}
+          {featured.img && (
+            <Image
+              src={featured.img}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
+            <div className="flex flex-wrap items-center gap-2 text-white/70 text-xs sm:text-sm mb-2">
+              {featured.category && featured.category !== "general" && (
+                <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white text-xs font-medium backdrop-blur-sm">
+                  {getCategoryLabel(featured.category)}
+                </span>
+              )}
+              <span>{formatDate(featured.createdAt)}</span>
+              <span aria-hidden>·</span>
+              <span>{getReadTimeMinutes(featured.content)} min read</span>
+            </div>
+            <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white leading-tight line-clamp-2">
+              {featured.title}
+            </h3>
+            {featured.desc && (
+              <p className="text-white/70 text-sm mt-2 line-clamp-2 max-w-lg">
+                {featured.desc}
+              </p>
+            )}
+            {featured.tags && featured.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {featured.tags.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-0.5 rounded-md bg-white/15 text-white/90 text-xs backdrop-blur-sm"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </Link>
+
+        {/* Side cards */}
+        <div className="w-full lg:w-2/5 flex flex-col gap-4">
+          {rest.slice(0, 3).map((post) => (
+            <Link
+              key={post._id}
+              to={`/${post.slug}`}
+              className="group flex gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              {post.img && (
+                <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-gray-100">
+                  <Image
+                    src={post.img}
+                    alt=""
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              )}
+              <div className="min-w-0 flex-1 flex flex-col justify-center">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-400 text-xs">
+                  {post.category && post.category !== "general" && (
+                    <>
+                      <span className="text-blue-600 font-medium">
+                        {getCategoryLabel(post.category)}
+                      </span>
+                      <span aria-hidden>·</span>
+                    </>
+                  )}
+                  <time dateTime={post.createdAt}>
+                    {formatDate(post.createdAt)}
+                  </time>
+                  <span aria-hidden>·</span>
+                  <span>{getReadTimeMinutes(post.content)} min</span>
+                </div>
+                <h4 className="font-semibold text-gray-900 group-hover:text-blue-800 transition-colors line-clamp-2 mt-1 leading-snug">
+                  {post.title}
+                </h4>
+                {post.tags && post.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {post.tags.slice(0, 2).map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 text-xs"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
-      {/* Others */}
-      <div className="w-full lg:w-1/2 flex flex-col gap-4">
-        {/* second */}
-        {posts[1] && (
-          <div className="lg:h-1/3 flex justify-between gap-4">
-            {posts[1].img && (
-              <div className="w-1/3 aspect-video">
-                <Image
-                  src={posts[1].img}
-                  className="rounded-3xl object-cover w-full h-full"
-                  w={298}
-                />
-              </div>
-            )}
-            {/* details and title */}
-            <div className="w-2/3">
-              {/* details */}
-              <div className="flex items-center gap-4 text-sm lg:text-base mb-4">
-                <h1 className="font-semibold">02.</h1>
-                <Link
-                  to={`/posts?cat=${posts[1].category}`}
-                  className="text-blue-800"
-                >
-                  {posts[1].category}
-                </Link>
-                <span className="text-gray-500 text-sm">
-                  {format(posts[1].createdAt)}
-                </span>
-              </div>
-              {/* title */}
-              <Link
-                to={posts[1].slug}
-                className="text-base sm:text-lg md:text-2xl lg:text-xl xl:text-2xl font-medium"
-              >
-                {posts[1].title}
-              </Link>
-            </div>
-          </div>
-        )}
-        {/* third */}
-        {posts[2] && (
-          <div className="lg:h-1/3 flex justify-between gap-4">
-            {posts[2].img && (
-              <div className="w-1/3 aspect-video">
-                <Image
-                  src={posts[2].img}
-                  className="rounded-3xl object-cover w-full h-full"
-                  w={298}
-                />
-              </div>
-            )}
-            {/* details and title */}
-            <div className="w-2/3">
-              {/* details */}
-              <div className="flex items-center gap-4 text-sm lg:text-base mb-4">
-                <h1 className="font-semibold">03.</h1>
-                <Link
-                  to={`/posts?cat=${posts[2].category}`}
-                  className="text-blue-800"
-                >
-                  {posts[2].category}
-                </Link>
-                <span className="text-gray-500 text-sm">
-                  {format(posts[2].createdAt)}
-                </span>
-              </div>
-              {/* title */}
-              <Link
-                to={posts[2].slug}
-                className="text-base sm:text-lg md:text-2xl lg:text-xl xl:text-2xl font-medium"
-              >
-                {posts[2].title}
-              </Link>
-            </div>
-          </div>
-        )}
-        {/* fourth */}
-        {posts[3] && (
-          <div className="lg:h-1/3 flex justify-between gap-4">
-            {posts[3].img && (
-              <div className="w-1/3 aspect-video">
-                <Image
-                  src={posts[3].img}
-                  className="rounded-3xl object-cover w-full h-full"
-                  w={298}
-                />
-              </div>
-            )}
-            {/* details and title */}
-            <div className="w-2/3">
-              {/* details */}
-              <div className="flex items-center gap-4 text-sm lg:text-base mb-4">
-                <h1 className="font-semibold">04.</h1>
-                <Link
-                  to={`/posts?cat=${posts[3].category}`}
-                  className="text-blue-800"
-                >
-                  {posts[3].category}
-                </Link>
-                <span className="text-gray-500 text-sm">
-                  {format(posts[3].createdAt)}
-                </span>
-              </div>
-              {/* title */}
-              <Link
-                to={posts[3].slug}
-                className="text-base sm:text-lg md:text-2xl lg:text-xl xl:text-2xl font-medium"
-              >
-                {posts[3].title}
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    </section>
   );
 };
 

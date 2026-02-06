@@ -71,10 +71,18 @@ export const createDraft = async (
     res.status(404).json({ error: "User not found!" });
     return;
   }
+  const tags = Array.isArray(req.body.tags)
+    ? [
+        ...new Set(
+          req.body.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
+        ),
+      ].slice(0, 5)
+    : [];
   const draft = await Draft.create({
     user: user._id,
     title: req.body.title ?? "",
     category: req.body.category ?? "general",
+    tags,
     desc: req.body.desc ?? "",
     content: req.body.content ?? "",
     img: req.body.img ?? "",
@@ -101,11 +109,19 @@ export const updateDraft = async (
     res.status(404).json({ error: "User not found!" });
     return;
   }
+  const tags = Array.isArray(req.body.tags)
+    ? [
+        ...new Set(
+          req.body.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
+        ),
+      ].slice(0, 5)
+    : [];
   const draft = await Draft.findOneAndUpdate(
     { _id: req.params.id, user: user._id },
     {
       title: req.body.title ?? "",
       category: req.body.category ?? "general",
+      tags,
       desc: req.body.desc ?? "",
       content: req.body.content ?? "",
       img: req.body.img ?? "",

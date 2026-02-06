@@ -3,7 +3,7 @@ import Navbar from "../components/Navbar";
 
 const MainLayout = () => {
   return (
-    <div className="w-full min-w-0 px-4 py-2 md:px-8 md:py-4 lg:px-16 xl:px-32 2xl:px-64 box-border">
+    <div className="w-full max-w-full min-w-0 px-4 py-2 md:px-8 md:py-4 lg:px-16 xl:px-32 2xl:px-64 box-border overflow-x-hidden overflow-y-auto">
       <Navbar />
       <Outlet />
     </div>

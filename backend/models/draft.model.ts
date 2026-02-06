@@ -4,6 +4,7 @@ export interface IDraft extends Document {
   user: Types.ObjectId;
   title: string;
   category: string;
+  tags: string[];
   desc?: string;
   content: string;
   img?: string;
@@ -25,6 +26,10 @@ const draftSchema = new Schema<IDraft>(
     category: {
       type: String,
       default: "general",
+    },
+    tags: {
+      type: [String],
+      default: [],
     },
     desc: {
       type: String,

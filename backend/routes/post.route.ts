@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import {
   getPosts,
   getPost,
+  getPostById,
   createPost,
   updatePost,
   deletePost,
@@ -33,6 +34,8 @@ router.patch("/feature", asyncHandler(featurePost));
 router.patch("/clap/:id", asyncHandler(toggleClap));
 router.put("/:id", asyncHandler(updatePost));
 router.delete("/:id", asyncHandler(deletePost));
+// Get by id (must be before /:slug so "id" is not captured as slug)
+router.get("/id/:id", increaseVisit, asyncHandler(getPostById));
 // Slug route must be last as it's a catch-all for GET requests
 router.get("/:slug", increaseVisit, asyncHandler(getPost));
 
