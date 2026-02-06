@@ -13,6 +13,7 @@ import SavedPosts from "./routes/SavedPosts";
 import SeriesListPage from "./routes/SeriesListPage";
 import SeriesDetailPage from "./routes/SeriesDetailPage";
 import WriteSeries from "./routes/WriteSeries";
+import AboutPage from "./routes/AboutPage";
 import MainLayout from "./layouts/MainLayout";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -74,6 +75,10 @@ const router = createBrowserRouter([
       {
         path: "/saved",
         element: <SavedPosts />,
+      },
+      {
+        path: "/about",
+        element: <AboutPage />,
       },
       {
         path: "/login",

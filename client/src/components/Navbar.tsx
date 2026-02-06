@@ -10,7 +10,7 @@ const Navbar = () => {
   const setPostsMenuOpen = useAppStore((s) => s.setPostsMenuOpen);
 
   return (
-    <div className="relative w-full min-w-0 h-16 md:h-20 flex items-center justify-between mb-4">
+    <div className="relative w-full min-w-0 h-16 md:h-20 flex items-center justify-between mb-4 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-gray-200 after:to-transparent">
       {/* LOGO */}
       <Link to="/" className="flex items-center gap-4 text-2xl font-bold">
         <Image src="logo.png" alt="Aniblog Logo" w={50} h={40} />
@@ -60,7 +60,7 @@ const Navbar = () => {
               Saved
             </Link>
           </SignedIn>
-          <Link to="/" onClick={() => setMobileNavOpen(false)}>
+          <Link to="/about" onClick={() => setMobileNavOpen(false)}>
             About
           </Link>
           <SignedOut>
@@ -129,7 +129,7 @@ const Navbar = () => {
           )}
         </div>
         <Link to="/series">Series</Link>
-        <Link to="/">About</Link>
+        <Link to="/about">About</Link>
         <SignedOut>
           <Link to="/login">
             <button className="py-2 px-4 rounded-3xl bg-blue-800 text-white">
