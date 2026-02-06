@@ -23,9 +23,9 @@ export interface IComment extends Document {
   updatedAt?: Date;
 }
 
-const reactionSchema = new Schema<IReaction>(
+const reactionSchema = new Schema(
   {
-    user: { type: Schema.Types.ObjectId as any, ref: "User", required: true },
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: {
       type: String,
       required: true,
@@ -35,15 +35,15 @@ const reactionSchema = new Schema<IReaction>(
   { _id: false }
 );
 
-const commentSchema = new Schema<IComment>(
+const commentSchema = new Schema(
   {
     user: {
-      type: Schema.Types.ObjectId as any,
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
     post: {
-      type: Schema.Types.ObjectId as any,
+      type: Schema.Types.ObjectId,
       ref: "Post",
       required: true,
     },
@@ -52,12 +52,12 @@ const commentSchema = new Schema<IComment>(
       required: true,
     },
     parentComment: {
-      type: Schema.Types.ObjectId as any,
+      type: Schema.Types.ObjectId,
       ref: "Comment",
       default: null,
     },
     reactions: {
-      type: [reactionSchema] as any,
+      type: [reactionSchema],
       default: [],
     },
   },

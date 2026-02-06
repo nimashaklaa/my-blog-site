@@ -10,7 +10,7 @@ export interface IUser extends Document {
   updatedAt?: Date;
 }
 
-const userSchema = new Schema<IUser>(
+const userSchema = new Schema(
   {
     clerkUserId: {
       type: String,
@@ -31,7 +31,7 @@ const userSchema = new Schema<IUser>(
       type: String,
     },
     savedPosts: {
-      type: [String] as any,
+      type: [String],
       default: [],
     },
   },

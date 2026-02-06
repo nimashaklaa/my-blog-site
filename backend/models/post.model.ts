@@ -17,10 +17,10 @@ export interface IPost extends Document {
   updatedAt?: Date;
 }
 
-const postSchema = new Schema<IPost>(
+const postSchema = new Schema(
   {
     user: {
-      type: Schema.Types.ObjectId as any,
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
@@ -44,7 +44,7 @@ const postSchema = new Schema<IPost>(
       default: "general",
     },
     tags: {
-      type: [String] as any,
+      type: [String],
       default: [],
     },
     content: {
@@ -60,12 +60,12 @@ const postSchema = new Schema<IPost>(
       default: 0,
     },
     claps: {
-      type: [Schema.Types.ObjectId] as any,
+      type: [Schema.Types.ObjectId],
       ref: "User",
       default: [],
     },
     series: {
-      type: Schema.Types.ObjectId as any,
+      type: Schema.Types.ObjectId,
       ref: "Series",
     },
   },

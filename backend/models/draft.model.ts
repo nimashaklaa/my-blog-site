@@ -12,10 +12,10 @@ export interface IDraft extends Document {
   updatedAt?: Date;
 }
 
-const draftSchema = new Schema<IDraft>(
+const draftSchema = new Schema(
   {
     user: {
-      type: Schema.Types.ObjectId as any,
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
@@ -28,7 +28,7 @@ const draftSchema = new Schema<IDraft>(
       default: "general",
     },
     tags: {
-      type: [String] as any,
+      type: [String],
       default: [],
     },
     desc: {

@@ -16,10 +16,10 @@ export interface ISeries extends Document {
   updatedAt?: Date;
 }
 
-const seriesSchema = new Schema<ISeries>(
+const seriesSchema = new Schema(
   {
     user: {
-      type: Schema.Types.ObjectId as any,
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
@@ -44,7 +44,7 @@ const seriesSchema = new Schema<ISeries>(
       default: "general",
     },
     tags: {
-      type: [String] as any,
+      type: [String],
       default: [],
       validate: {
         validator: function (v: string[]) {
@@ -56,7 +56,7 @@ const seriesSchema = new Schema<ISeries>(
     posts: [
       {
         post: {
-          type: Schema.Types.ObjectId as any,
+          type: Schema.Types.ObjectId,
           ref: "Post",
           required: true,
         },
