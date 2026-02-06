@@ -1,7 +1,13 @@
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { useCallback, useEffect, useState, useRef, FormEvent } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  FormEvent,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Upload from "../components/Upload";
@@ -132,12 +138,15 @@ const Write = () => {
     setCoverPosition({ x: 50, y: 50 });
   }, [cover.url, cover.filePath]);
 
-  const handleCoverPointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest("button")) return;
-    e.preventDefault();
-    lastPointerRef.current = { x: e.clientX, y: e.clientY };
-    setIsDraggingCover(true);
-  }, []);
+  const handleCoverPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if ((e.target as HTMLElement).closest("button")) return;
+      e.preventDefault();
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+      setIsDraggingCover(true);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!isDraggingCover) return;
@@ -202,6 +211,7 @@ const Write = () => {
     isLoaded,
     isSignedIn,
     isAdmin,
+    isEditMode,
     title,
     category,
     tags,

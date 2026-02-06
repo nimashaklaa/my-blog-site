@@ -1,9 +1,10 @@
+import type { CSSProperties } from "react";
 import { IKImage } from "imagekitio-react";
 
 interface ImageProps {
   src: string;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   w?: number;
   h?: number;
   alt?: string;

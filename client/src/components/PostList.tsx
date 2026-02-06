@@ -99,7 +99,7 @@ const PostList = () => {
         validPosts.length > 3 ? (
           <div className="text-center py-8">
             <span className="text-gray-400 text-sm">
-              You've reached the end
+              You&apos;ve reached the end
             </span>
           </div>
         ) : null

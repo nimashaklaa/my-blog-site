@@ -279,7 +279,7 @@ const SinglePostPage = () => {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const hasClapped = data?.hasClapped || false;
   const readTime = data ? getReadTimeMinutes(data.content) : 0;
-  const postUrl = useMemo(() => window.location.href, [slug]);
+  const postUrl = useMemo(() => window.location.href, []);
 
   const handleListen = useCallback(() => {
     const synth = window.speechSynthesis;
