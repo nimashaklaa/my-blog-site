@@ -23,7 +23,13 @@ export interface Post {
   updatedAt?: string;
 }
 
-export type CommentReactionType = "like" | "love" | "laugh";
+export type CommentReactionType =
+  | "like"
+  | "love"
+  | "laugh"
+  | "celebrate"
+  | "care"
+  | "insightful";
 
 export interface Comment {
   _id: string;

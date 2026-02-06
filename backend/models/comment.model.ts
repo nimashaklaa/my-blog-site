@@ -1,6 +1,12 @@
 import { Schema, model, Document, Types } from "mongoose";
 
-export type ReactionType = "like" | "love" | "laugh";
+export type ReactionType =
+  | "like"
+  | "love"
+  | "laugh"
+  | "celebrate"
+  | "care"
+  | "insightful";
 
 export interface IReaction {
   user: Types.ObjectId;
@@ -20,7 +26,11 @@ export interface IComment extends Document {
 const reactionSchema = new Schema<IReaction>(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    type: { type: String, required: true, enum: ["like", "love", "laugh"] },
+    type: {
+      type: String,
+      required: true,
+      enum: ["like", "love", "laugh", "celebrate", "care", "insightful"],
+    },
   },
   { _id: false }
 );

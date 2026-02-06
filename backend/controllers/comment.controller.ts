@@ -3,13 +3,30 @@ import Comment, { ReactionType } from "../models/comment.model.js";
 import User from "../models/user.model.js";
 import { getUserRole } from "../lib/getUserRole.js";
 
-const REACTION_TYPES: ReactionType[] = ["like", "love", "laugh"];
+const REACTION_TYPES: ReactionType[] = [
+  "like",
+  "love",
+  "laugh",
+  "celebrate",
+  "care",
+  "insightful",
+];
+
+const EMPTY_COUNTS: Record<ReactionType, number> = {
+  like: 0,
+  love: 0,
+  laugh: 0,
+  celebrate: 0,
+  care: 0,
+  insightful: 0,
+};
 
 function toReactionCounts(reactions: { user: unknown; type: string }[]) {
-  const counts: Record<string, number> = { like: 0, love: 0, laugh: 0 };
+  const counts = { ...EMPTY_COUNTS };
   for (const r of reactions) {
     if (REACTION_TYPES.includes(r.type as ReactionType))
-      counts[r.type] = (counts[r.type] ?? 0) + 1;
+      counts[r.type as ReactionType] =
+        (counts[r.type as ReactionType] ?? 0) + 1;
   }
   return counts;
 }
@@ -152,9 +169,10 @@ export const reactToComment = async (
     return;
   }
   if (!type || !REACTION_TYPES.includes(type as ReactionType)) {
-    res
-      .status(400)
-      .json({ error: "Invalid reaction type. Use: like, love, laugh" });
+    res.status(400).json({
+      error:
+        "Invalid reaction type. Use: like, love, laugh, celebrate, care, insightful",
+    });
     return;
   }
 

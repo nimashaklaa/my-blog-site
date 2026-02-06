@@ -10,8 +10,11 @@ import { Comment as CommentType, CommentReactionType } from "../types";
 const REACTIONS: { type: CommentReactionType; label: string; emoji: string }[] =
   [
     { type: "like", label: "Like", emoji: "👍" },
+    { type: "celebrate", label: "Celebrate", emoji: "👏" },
+    { type: "care", label: "Care", emoji: "🤗" },
     { type: "love", label: "Love", emoji: "❤️" },
-    { type: "laugh", label: "Laugh", emoji: "😂" },
+    { type: "insightful", label: "Insightful", emoji: "💡" },
+    { type: "laugh", label: "Funny", emoji: "😂" },
   ];
 
 interface CommentProps {
@@ -112,11 +115,15 @@ const Comment = ({
     reactMutation.mutate(type);
   };
 
-  const reactionCounts = comment.reactionCounts ?? {
+  const defaultCounts: Record<CommentReactionType, number> = {
     like: 0,
     love: 0,
     laugh: 0,
+    celebrate: 0,
+    care: 0,
+    insightful: 0,
   };
+  const reactionCounts = { ...defaultCounts, ...comment.reactionCounts };
   const myReaction = comment.myReaction ?? null;
   const totalReactions = Object.values(reactionCounts).reduce(
     (a, b) => a + b,
@@ -125,6 +132,9 @@ const Comment = ({
   const activeReactions = REACTIONS.filter(
     (r) => (reactionCounts[r.type] ?? 0) > 0
   );
+  const myReactionConfig = myReaction
+    ? REACTIONS.find((r) => r.type === myReaction)
+    : null;
 
   return (
     <div
@@ -150,13 +160,27 @@ const Comment = ({
         </span>
         {user &&
           (comment.user.username === user.username || role === "admin") && (
-            <span
-              className="text-xs text-red-300 hover:text-red-500 cursor-pointer"
+            <button
+              type="button"
+              className="text-red-300 hover:text-red-500 cursor-pointer disabled:opacity-50"
               onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+              title="Delete comment"
             >
-              delete
-              {deleteMutation.isPending && <span> (in progress)</span>}
-            </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </button>
           )}
       </div>
 
@@ -169,27 +193,50 @@ const Comment = ({
         <p className="inline">{comment.desc}</p>
       </div>
 
-      {/* Reactions + Reply row */}
-      <div className="mt-2 flex items-center gap-3">
-        {/* Reaction picker trigger */}
-        <div className="relative group/react">
+      {/* Like button + hover reaction set (LinkedIn-style) + Reply */}
+      <div className="mt-2 flex items-center gap-3 flex-wrap">
+        {/* Like button: shows "Like" by default, or chosen reaction (e.g. "Insightful") after pick */}
+        <div className="relative group/react pt-10 -mt-10">
           <button
             type="button"
             onClick={() => myReaction && handleReaction(myReaction)}
-            className={`text-xs transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
               myReaction
-                ? "text-blue-600 font-medium"
-                : "text-gray-500 hover:text-gray-700"
+                ? "text-blue-600 bg-blue-50 border border-blue-200"
+                : "text-gray-600 hover:bg-gray-100 border border-transparent"
             }`}
+            title={myReaction ? "Remove reaction" : "Like"}
           >
-            {myReaction
-              ? `${REACTIONS.find((r) => r.type === myReaction)?.emoji} ${REACTIONS.find((r) => r.type === myReaction)?.label}`
-              : "React"}
+            {myReactionConfig ? (
+              <>
+                <span className="text-base leading-none">
+                  {myReactionConfig.emoji}
+                </span>
+                <span>{myReactionConfig.label}</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4 shrink-0"
+                  aria-hidden
+                >
+                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+                </svg>
+                <span>Like</span>
+              </>
+            )}
           </button>
 
-          {/* Hover picker — pb-2 bridges the gap so hover doesn't break */}
-          <div className="absolute bottom-full left-0 pb-2 hidden group-hover/react:block z-10">
-            <div className="flex items-center gap-1 bg-white rounded-full shadow-lg border border-gray-100 px-2 py-1.5">
+          {/* Reaction set on hover — appears above; pt-10 extends hover zone so cursor can reach it */}
+          <div className="absolute bottom-full left-0 pt-1 hidden group-hover/react:block z-10">
+            <div className="flex items-center gap-0.5 bg-white rounded-full shadow-lg border border-gray-200 px-2 py-1.5">
               {REACTIONS.map(({ type, label, emoji }) => {
                 const isActive = myReaction === type;
                 return (
@@ -198,8 +245,8 @@ const Comment = ({
                     type="button"
                     onClick={() => handleReaction(type)}
                     disabled={reactMutation.isPending}
-                    className={`text-lg hover:scale-125 transition-transform px-0.5 rounded-full ${
-                      isActive ? "bg-blue-100 ring-2 ring-blue-300" : ""
+                    className={`text-lg leading-none hover:scale-110 transition-transform p-1 rounded-full ${
+                      isActive ? "bg-blue-50 ring-1 ring-blue-300" : ""
                     } ${reactMutation.isPending ? "opacity-50" : ""}`}
                     title={isActive ? `Remove ${label}` : label}
                     aria-label={isActive ? `Remove ${label}` : label}
@@ -212,12 +259,12 @@ const Comment = ({
           </div>
         </div>
 
-        {/* Reaction summary pill */}
+        {/* Reaction summary: icons + total count (e.g. 👍 👏 ❤️ 315) */}
         {totalReactions > 0 && (
-          <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
             <span className="inline-flex -space-x-0.5">
-              {activeReactions.map(({ emoji, type }) => (
-                <span key={type} className="text-sm">
+              {activeReactions.slice(0, 3).map(({ emoji, type }) => (
+                <span key={type} className="text-sm" title={type}>
                   {emoji}
                 </span>
               ))}
