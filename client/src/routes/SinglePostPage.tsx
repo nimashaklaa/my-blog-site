@@ -269,6 +269,18 @@ const SinglePostPage = () => {
     enabled: !!data?._id,
   });
 
+  // Fetch series if post belongs to one
+  const { data: seriesData } = useQuery({
+    queryKey: ["series", data?.series],
+    queryFn: () => {
+      if (typeof data?.series === "string") {
+        return getSeriesById(data.series, null);
+      }
+      return null;
+    },
+    enabled: !!data?.series && typeof data.series === "string",
+  });
+
   const [moreOpen, setMoreOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -476,18 +488,6 @@ const SinglePostPage = () => {
   if (isPending) return <div>Loading...</div>;
   if (error) return <div>Something went wrong! {error.message}</div>;
   if (!data) return <div>Post not found!</div>;
-
-  // Fetch series if post belongs to one
-  const { data: seriesData } = useQuery({
-    queryKey: ["series", data?.series],
-    queryFn: () => {
-      if (typeof data?.series === "string") {
-        return getSeriesById(data.series, null);
-      }
-      return null;
-    },
-    enabled: !!data?.series && typeof data.series === "string",
-  });
 
   const series = typeof data?.series === "object" ? data.series : seriesData;
   const postsInSeries = series?.posts || [];

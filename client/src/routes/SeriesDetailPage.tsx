@@ -23,7 +23,6 @@ const SeriesDetailPage = () => {
   const { getToken } = useAuth();
   const { user } = useUser();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const isAdmin = (user?.publicMetadata?.role as string) === "admin" || false;
 

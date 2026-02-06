@@ -129,18 +129,6 @@ const WriteSeries = () => {
     };
   }, [isDraggingCover]);
 
-  useEffect(() => {
-    if (isLoaded && (!isSignedIn || !isAdmin)) {
-      toast.error("Only admins can create series!");
-      navigate("/");
-    }
-  }, [isLoaded, isSignedIn, isAdmin, navigate]);
-
-  if (!isLoaded) return <div className="">Loading...</div>;
-  if (isLoaded && !isSignedIn) return <div className="">You should login!</div>;
-  if (isLoaded && isSignedIn && !isAdmin)
-    return <div className="">Only admins can create series!</div>;
-
   const addTag = () => {
     const t = tagInput.trim();
     if (!t || tags.length >= MAX_TAGS) return;
@@ -289,6 +277,18 @@ const WriteSeries = () => {
       createSeriesMutation.mutate(payload);
     }
   };
+
+  useEffect(() => {
+    if (isLoaded && (!isSignedIn || !isAdmin)) {
+      toast.error("Only admins can create series!");
+      navigate("/");
+    }
+  }, [isLoaded, isSignedIn, isAdmin, navigate]);
+
+  if (!isLoaded) return <div className="">Loading...</div>;
+  if (isLoaded && !isSignedIn) return <div className="">You should login!</div>;
+  if (isLoaded && isSignedIn && !isAdmin)
+    return <div className="">Only admins can create series!</div>;
 
   const isMutating = isEditMode
     ? updateSeriesMutation.isPending
