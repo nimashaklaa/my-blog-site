@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import Comment, { ReactionType } from "../models/comment.model.js";
 import User from "../models/user.model.js";
 import { getUserRole } from "../lib/getUserRole.js";
@@ -59,7 +60,8 @@ export const getPostComments = async (
   const payload = comments.map((c) => {
     const reactionCounts = toReactionCounts(c.reactions ?? []);
     const myReaction = getMyReaction(c.reactions ?? [], currentUserMongoId);
-    const { reactions, ...rest } = c;
+    const rest = { ...c };
+    delete (rest as Record<string, unknown>).reactions;
     return { ...rest, reactionCounts, myReaction };
   });
 
@@ -182,6 +184,8 @@ export const reactToComment = async (
     return;
   }
 
+  const userId = user._id as Types.ObjectId;
+
   const comment = await Comment.findById(commentId);
   if (!comment) {
     res.status(404).json({ error: "Comment not found!" });
@@ -190,23 +194,23 @@ export const reactToComment = async (
 
   const reactions = comment.reactions ?? [];
   const existingIndex = reactions.findIndex(
-    (r) => r.user.toString() === user._id.toString()
+    (r) => r.user.toString() === userId.toString()
   );
 
   if (existingIndex >= 0) {
     if (reactions[existingIndex].type === type) {
       comment.reactions.splice(existingIndex, 1);
     } else {
-      comment.reactions[existingIndex].type = type as ReactionType;
+      reactions[existingIndex].type = type as ReactionType;
     }
   } else {
-    comment.reactions.push({ user: user._id, type: type as ReactionType });
+    comment.reactions.push({ user: userId, type: type as ReactionType });
   }
 
   await comment.save();
 
   const reactionCounts = toReactionCounts(comment.reactions);
-  const myReaction = getMyReaction(comment.reactions, user._id.toString());
+  const myReaction = getMyReaction(comment.reactions, userId.toString());
 
   res.status(200).json({
     reactionCounts,
