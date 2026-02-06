@@ -494,6 +494,10 @@ const SinglePostPage = () => {
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8 max-w-4xl mx-auto w-full min-w-0 px-1 sm:px-0 box-border">
+      {/* Title */}
+      <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-gray-900">
+        {data.title}
+      </h1>
       {/* Cover image — drag to reposition */}
       {data.img && (
         <div
@@ -519,11 +523,6 @@ const SinglePostPage = () => {
           <span className="sr-only">Drag to adjust cover position</span>
         </div>
       )}
-
-      {/* Title */}
-      <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-gray-900">
-        {data.title}
-      </h1>
 
       {/* Meta: date + read time + listen */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-500 text-sm">

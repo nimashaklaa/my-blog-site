@@ -16,9 +16,13 @@ interface CommentNode {
   replies: CommentType[];
 }
 
-const fetchComments = async (postId: string): Promise<CommentType[]> => {
+const fetchComments = async (
+  postId: string,
+  token: string | null
+): Promise<CommentType[]> => {
   const res = await axios.get(
-    `${import.meta.env.VITE_API_URL}/comments/${postId}`
+    `${import.meta.env.VITE_API_URL}/comments/${postId}`,
+    token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
   );
   return res.data;
 };
@@ -61,8 +65,11 @@ const Comments = ({ postId }: CommentsProps) => {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   const { isPending, error, data } = useQuery({
-    queryKey: ["comments", postId],
-    queryFn: () => fetchComments(postId),
+    queryKey: ["comments", postId, !!user],
+    queryFn: async () => {
+      const token = await getToken();
+      return fetchComments(postId, token ?? null);
+    },
   });
 
   const queryClient = useQueryClient();
