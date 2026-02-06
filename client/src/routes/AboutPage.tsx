@@ -6,12 +6,12 @@ const AboutPage = () => {
 
         <div className="space-y-6 text-gray-700 leading-relaxed">
           <p className="text-xl text-gray-600">
-            Hi, I'm Amandi Nimasha — a software engineer passionate about
+            Hi, I&apos;m Amandi Nimasha — a software engineer passionate about
             building things that matter.
           </p>
 
           <p>
-            I'm currently working as a Software Engineer at{" "}
+            I&apos;m currently working as a Software Engineer at{" "}
             <a
               href="https://www.metarunelabs.dev/"
               target="_blank"
@@ -27,15 +27,16 @@ const AboutPage = () => {
 
           <p>
             This blog is where I share my thoughts, learnings, and experiences
-            in software development. I write about topics I'm passionate about —
-            AI, Web3, full-stack development, DevOps, and everything in between.
+            in software development. I write about topics I&apos;m passionate
+            about — AI, Web3, full-stack development, DevOps, and everything in
+            between.
           </p>
 
           <p>
-            When I'm not coding, you'll find me exploring new technologies,
-            contributing to open-source projects, or learning something new. I
-            believe in continuous learning and sharing knowledge with the
-            community.
+            When I&apos;m not coding, you&apos;ll find me exploring new
+            technologies, contributing to open-source projects, or learning
+            something new. I believe in continuous learning and sharing
+            knowledge with the community.
           </p>
 
           <div className="border-t border-gray-200 pt-8 mt-8">
@@ -56,8 +57,8 @@ const AboutPage = () => {
               Get in Touch
             </h2>
             <p className="mb-4">
-              I'm always open to interesting conversations and collaboration
-              opportunities. Feel free to reach out!
+              I&apos;m always open to interesting conversations and
+              collaboration opportunities. Feel free to reach out!
             </p>
             <div className="flex gap-4 flex-wrap">
               <a

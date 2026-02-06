@@ -1,11 +1,10 @@
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getSeriesBySlug, deleteSeries } from "../services";
 import Image from "../components/Image";
 import { getCategoryLabel } from "../constants/categories";
 import { Post } from "../types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
 function getReadTimeMinutes(html: string | undefined): number {
