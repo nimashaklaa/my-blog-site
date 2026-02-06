@@ -15,7 +15,7 @@ export interface IDraft extends Document {
 const draftSchema = new Schema<IDraft>(
   {
     user: {
-      type: Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId as any,
       ref: "User",
       required: true,
     },
@@ -28,7 +28,7 @@ const draftSchema = new Schema<IDraft>(
       default: "general",
     },
     tags: {
-      type: [String],
+      type: [String] as any,
       default: [],
     },
     desc: {

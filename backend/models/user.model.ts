@@ -31,7 +31,7 @@ const userSchema = new Schema<IUser>(
       type: String,
     },
     savedPosts: {
-      type: [String],
+      type: [String] as any,
       default: [],
     },
   },
