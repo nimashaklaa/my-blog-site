@@ -587,7 +587,7 @@ const Write = () => {
         <button
           type="submit"
           disabled={isMutating || (progress > 0 && progress < 100)}
-          className="bg-blue-800 text-white font-medium rounded-xl mt-4 p-2 w-36 disabled:bg-blue-400 disabled:cursor-not-allowed"
+          className="bg-black text-white font-medium rounded-xl mt-4 p-2 w-[300px] disabled:bg-gray-600 disabled:cursor-not-allowed"
         >
           {isMutating
             ? isEditMode

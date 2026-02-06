@@ -79,16 +79,68 @@ app.use(cors(corsOptions));
 // Prevent duplicate Access-Control-Allow-Origin (e.g. from Clerk adding "null").
 // Keep only the first valid value so the browser sees a single header.
 app.use((_req, res, next) => {
-  const setHeader = res.setHeader.bind(res);
-  res.setHeader = function (name: string, value: string | number | string[]) {
-    if (String(name).toLowerCase() === "access-control-allow-origin") {
+  const originalSetHeader = res.setHeader.bind(res);
+  const originalAppend = res.append.bind(res);
+
+  res.setHeader = function (
+    name: string,
+    value: string | number | readonly string[]
+  ) {
+    const headerName = String(name).toLowerCase();
+
+    if (headerName === "access-control-allow-origin") {
       const existing = res.getHeader("Access-Control-Allow-Origin");
-      if (existing) return res; // already set (e.g. by cors), skip duplicate
-      const val = Array.isArray(value) ? value[0] : value;
-      if (val === "null" || val === null || val === undefined) return res; // skip null
+
+      // If we already have a valid origin set, skip any further attempts
+      if (existing && existing !== "null") {
+        return res;
+      }
+
+      // Clean the value - remove "null" and keep only valid origins
+      let cleanValue: string | undefined;
+      if (Array.isArray(value)) {
+        cleanValue = value.find((v) => v && v !== "null" && v !== "undefined");
+      } else if (typeof value === "string") {
+        // Handle comma-separated values like "http://localhost:5173, null"
+        const parts = value.split(",").map((v) => v.trim());
+        cleanValue = parts.find((v) => v && v !== "null" && v !== "undefined");
+      } else {
+        cleanValue = String(value);
+      }
+
+      // Skip if no valid value
+      if (!cleanValue || cleanValue === "null" || cleanValue === "undefined") {
+        return res;
+      }
+
+      return originalSetHeader(name, cleanValue);
     }
-    return setHeader(name, value as string | number | string[]);
+
+    return originalSetHeader(
+      name,
+      value as string | number | readonly string[]
+    );
   };
+
+  // Also intercept append() to prevent adding "null" to CORS header
+  res.append = function (field: string, val?: string | string[]) {
+    if (String(field).toLowerCase() === "access-control-allow-origin") {
+      const existing = res.getHeader("Access-Control-Allow-Origin");
+      // If valid origin already set, don't append anything
+      if (existing && existing !== "null") {
+        return res;
+      }
+      // If trying to append "null", skip it
+      if (
+        val === "null" ||
+        (Array.isArray(val) && val.every((v) => v === "null"))
+      ) {
+        return res;
+      }
+    }
+    return originalAppend(field, val);
+  };
+
   next();
 });
 
