@@ -15,7 +15,7 @@ import { AxiosError } from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Post } from "../types";
 import { toast } from "react-toastify";
-import { getPost, toggleClap, getComments } from "../services";
+import { getPost, toggleClap, getComments, getSeriesById } from "../services";
 
 interface BlockContent {
   type?: string;
@@ -477,12 +477,109 @@ const SinglePostPage = () => {
   if (error) return <div>Something went wrong! {error.message}</div>;
   if (!data) return <div>Post not found!</div>;
 
+  // Fetch series if post belongs to one
+  const { data: seriesData } = useQuery({
+    queryKey: ["series", data?.series],
+    queryFn: () => {
+      if (typeof data?.series === "string") {
+        return getSeriesById(data.series, null);
+      }
+      return null;
+    },
+    enabled: !!data?.series && typeof data.series === "string",
+  });
+
+  const series = typeof data?.series === "object" ? data.series : seriesData;
+  const postsInSeries = series?.posts || [];
+  const currentPostIndex = postsInSeries.findIndex(
+    (item) =>
+      (typeof item.post === "string" ? item.post : item.post._id) === data?._id
+  );
+  const prevPost =
+    currentPostIndex > 0 ? postsInSeries[currentPostIndex - 1] : null;
+  const nextPost =
+    currentPostIndex >= 0 && currentPostIndex < postsInSeries.length - 1
+      ? postsInSeries[currentPostIndex + 1]
+      : null;
+
   return (
     <div className="flex flex-col gap-6 sm:gap-8 max-w-4xl mx-auto w-full min-w-0 px-1 sm:px-0 box-border">
       {/* Title */}
       <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-gray-900">
         {data.title}
       </h1>
+
+      {/* Series Navigation */}
+      {series && (
+        <div className="p-4 rounded-xl bg-purple-50 border border-purple-100">
+          <div className="flex items-center gap-2 mb-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="w-5 h-5 text-purple-600"
+            >
+              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z" />
+            </svg>
+            <span className="text-sm font-medium text-purple-900">
+              Part of series:
+            </span>
+          </div>
+          <Link
+            to={`/series/${series.slug}`}
+            className="text-lg font-semibold text-purple-700 hover:text-purple-900 transition-colors block mb-3"
+          >
+            {series.name}
+          </Link>
+          {(prevPost || nextPost) && (
+            <div className="flex gap-2 flex-wrap">
+              {prevPost && (
+                <Link
+                  to={`/${typeof prevPost.post === "string" ? prevPost.post : prevPost.post.slug}`}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white text-purple-700 text-sm font-medium hover:bg-purple-100 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M14 8a.75.75 0 0 1-.75.75H4.56l3.22 3.22a.75.75 0 1 1-1.06 1.06l-4.5-4.5a.75.75 0 0 1 0-1.06l4.5-4.5a.75.75 0 0 1 1.06 1.06L4.56 7.25h8.69A.75.75 0 0 1 14 8Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Previous
+                </Link>
+              )}
+              {nextPost && (
+                <Link
+                  to={`/${typeof nextPost.post === "string" ? nextPost.post : nextPost.post.slug}`}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white text-purple-700 text-sm font-medium hover:bg-purple-100 transition-colors"
+                >
+                  Next
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M2 8a.75.75 0 0 1 .75-.75h8.69L8.22 4.03a.75.75 0 0 1 1.06-1.06l4.5 4.5a.75.75 0 0 1 0 1.06l-4.5 4.5a.75.75 0 0 1-1.06-1.06l3.22-3.22H2.75A.75.75 0 0 1 2 8Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Cover image — drag to reposition */}
       {data.img && (
         <div

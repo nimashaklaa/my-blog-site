@@ -23,6 +23,7 @@ import {
   createDraft,
   updateDraft,
   deleteDraft,
+  getSeries,
 } from "../services";
 
 interface UploadData {
@@ -55,6 +56,7 @@ const Write = () => {
   const [initialEditorContent, setInitialEditorContent] = useState("");
   const [coverPosition, setCoverPosition] = useState({ x: 50, y: 50 });
   const [isDraggingCover, setIsDraggingCover] = useState(false);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string>("");
   const coverRef = useRef<HTMLDivElement>(null);
   const lastPointerRef = useRef({ x: 0, y: 0 });
   const lastSyncedDraftIdRef = useRef<string | null>(null);
@@ -74,6 +76,13 @@ const Write = () => {
     enabled: isEditMode,
   });
 
+  // Fetch available series
+  const { data: seriesData } = useQuery({
+    queryKey: ["series-all"],
+    queryFn: () => getSeries({ limit: 100 }, null),
+    enabled: isLoaded && isSignedIn && isAdmin,
+  });
+
   useEffect(() => {
     if (
       editPost &&
@@ -88,6 +97,11 @@ const Write = () => {
       setValue(editPost.content || "");
       setInitialEditorContent(editPost.content || "");
       setCover(editPost.img ? { filePath: editPost.img } : {});
+      setSelectedSeriesId(
+        typeof editPost.series === "string"
+          ? editPost.series
+          : editPost.series?._id || ""
+      );
       setEditorKey((k) => k + 1);
     }
   }, [editPost, editSlug]);
@@ -231,6 +245,7 @@ const Write = () => {
       tags: string[];
       desc: string;
       content: string;
+      series?: string;
     }) => {
       const token = await getTokenForRequest();
       return createPost(newPost, token);
@@ -274,6 +289,7 @@ const Write = () => {
       tags: string[];
       desc: string;
       content: string;
+      series?: string;
     }) => {
       const token = await getTokenForRequest();
       if (!editPost?._id) throw new Error("No post to update");
@@ -377,6 +393,7 @@ const Write = () => {
       tags: tags.slice(0, MAX_TAGS),
       desc: desc.trim(),
       content: value,
+      series: selectedSeriesId || undefined,
     };
     if (isEditMode) {
       updatePostMutation.mutate(payload);
@@ -516,6 +533,24 @@ const Write = () => {
               {CATEGORIES.map(({ value, label }) => (
                 <option key={value} value={value}>
                   {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="series" className="text-sm shrink-0">
+              Series
+            </label>
+            <select
+              id="series"
+              className="p-2 rounded-xl bg-white shadow-md"
+              value={selectedSeriesId}
+              onChange={(e) => setSelectedSeriesId(e.target.value)}
+            >
+              <option value="">None</option>
+              {seriesData?.series.map((s) => (
+                <option key={s._id} value={s._id}>
+                  {s.name}
                 </option>
               ))}
             </select>

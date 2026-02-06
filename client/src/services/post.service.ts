@@ -47,6 +47,7 @@ export async function createPost(
     tags: string[];
     desc?: string;
     content: string;
+    series?: string;
   },
   token: string
 ) {
@@ -63,6 +64,7 @@ export async function updatePost(
     tags: string[];
     desc?: string;
     content: string;
+    series?: string;
   },
   token: string
 ) {

@@ -52,6 +52,9 @@ const Navbar = () => {
           <Link to="/posts" onClick={() => setMobileNavOpen(false)}>
             All Posts
           </Link>
+          <Link to="/series" onClick={() => setMobileNavOpen(false)}>
+            Series
+          </Link>
           <SignedIn>
             <Link to="/saved" onClick={() => setMobileNavOpen(false)}>
               Saved
@@ -125,6 +128,7 @@ const Navbar = () => {
             </div>
           )}
         </div>
+        <Link to="/series">Series</Link>
         <Link to="/">About</Link>
         <SignedOut>
           <Link to="/login">
